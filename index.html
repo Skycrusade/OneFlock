@@ -1,0 +1,3584 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#047857">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link id="pwaManifestLink" rel="manifest" href="">
+  <title>AvianCare Ultimate - Centro di Controllo Pappagalli</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { -webkit-tap-highlight-color: transparent; font-family: system-ui, -apple-system, sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    details.card-collapsible > summary { list-style: none; cursor: pointer; }
+    details.card-collapsible > summary::-webkit-details-marker { display: none; }
+    details.card-collapsible[open] > summary .collapse-chevron { transform: rotate(180deg); }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; padding: 0 !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 pb-24">
+
+  <!-- TOAST CONFERMA COLLEGAMENTO AUTOMATICO DISPOSITIVO -->
+  <div id="familyJoinedToast" class="fixed top-4 inset-x-4 max-w-md mx-auto bg-emerald-900 text-white p-4 rounded-2xl shadow-2xl z-[110] hidden items-center gap-3 border-2 border-emerald-400 no-print">
+    <i class="fa-solid fa-circle-check text-2xl text-emerald-400"></i>
+    <div class="text-xs">
+      <div class="font-bold text-sm">Dispositivo Sincronizzato!</div>
+      <div class="opacity-90">Ora tutti i tuoi pappagalli sono collegati in tempo reale con gli altri dispositivi della tua famiglia.</div>
+    </div>
+  </div>
+
+  <!-- OVERLAY SVEGLIA SONORA A TUTTO SCHERMO -->
+  <div id="ringingAlarmOverlay" class="fixed inset-0 bg-rose-700/95 text-white z-[100] hidden flex-col items-center justify-center p-6 text-center space-y-6 no-print">
+    <div class="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center animate-bounce">
+      <i class="fa-solid fa-bell text-5xl"></i>
+    </div>
+    <div class="space-y-2">
+      <div class="text-xs uppercase tracking-widest opacity-80 font-bold">Sveglia Attività AvianCare</div>
+      <h2 id="ringingAlarmTitle" class="text-3xl font-extrabold">È ora di pesare Kiwi!</h2>
+      <p id="ringingAlarmTime" class="text-lg opacity-90">08:00</p>
+    </div>
+    <div class="flex flex-col w-full max-w-xs gap-3 pt-4">
+      <button onclick="stopRingingAlarm(false)" class="w-full bg-white text-rose-800 font-extrabold py-4 rounded-2xl text-base shadow-lg active:scale-95">
+        <i class="fa-solid fa-check mr-1"></i> Spegni Sveglia (Fatto)
+      </button>
+      <button onclick="stopRingingAlarm(true)" class="w-full bg-rose-900/80 border border-rose-400 text-white font-semibold py-3 rounded-2xl text-sm active:scale-95">
+        <i class="fa-solid fa-clock-rotate-left mr-1"></i> Posponi di 5 minuti
+      </button>
+    </div>
+  </div>
+
+  <!-- MINI SCHEDA PAPPAGALLO AL CLICK SULLA FOTO PROFILO -->
+  <div id="parrotQuickCardModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-start">
+        <div class="flex items-center gap-3">
+          <div id="quickCardAvatar" class="w-14 h-14 rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0"></div>
+          <div>
+            <h3 id="quickCardName" class="font-extrabold text-lg text-slate-800">--</h3>
+            <p id="quickCardSpecies" class="text-xs text-slate-500">--</p>
+          </div>
+        </div>
+        <button onclick="closeParrotQuickCard()" class="text-slate-400 hover:text-slate-700 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="quickCardDetails" class="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs space-y-1.5 text-slate-700"></div>
+      <div class="flex gap-2 pt-1">
+        <button onclick="viewCurrentParrotCitesPdf()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-file-pdf"></i> Vedi CITES
+        </button>
+        <button onclick="closeParrotQuickCard(); openEditParrotModal();" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3.5 py-2.5 rounded-xl text-xs font-semibold">
+          Modifica
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL INFO TEMPI MINIMI FUORI GABBIA -->
+  <div id="flightInfoModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-emerald-600"></i> Tempi Minimi Fuori Gabbia
+        </h3>
+        <button onclick="closeFlightInfoModal()" class="text-slate-400 hover:text-slate-700 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="text-xs text-slate-700 space-y-2 leading-relaxed">
+        <p>Non esiste un limite massimo al tempo fuori gabbia, purché l'ambiente sia messo in sicurezza e siano garantite <strong>10–12 ore di sonno</strong>. Ecco i <strong>minimi giornalieri consigliati</strong>:</p>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 space-y-1.5">
+          <div><strong>• Specie piccole</strong> (Ondulati, Inseparabili, Forpus, Calopsite): <strong>almeno 2 – 3 ore/giorno</strong> (120–180 min).</div>
+          <div><strong>• Specie medie</strong> (Conuri, Parrocchetti, Senegal, Pionus, Cenerini, Amazzoni, Eclectus): <strong>almeno 3 – 4 ore/giorno</strong> (180–240 min).</div>
+          <div><strong>• Specie grandi</strong> (Ara, Cacatua): <strong>almeno 4+ ore/giorno</strong> (240+ min) con stimoli, volo libero e trespoli esterni.</div>
+        </div>
+        <p class="text-[11px] text-slate-500">Puoi impostare il tuo obiettivo minimo personalizzato e l'orario di azzeramento giornaliero direttamente nel pannello Volo.</p>
+      </div>
+      <button onclick="closeFlightInfoModal()" class="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold">Ho capito</button>
+    </div>
+  </div>
+
+  <!-- VISUALIZZATORE FOTO / PDF -->
+  <div id="mediaViewerModal" class="fixed inset-0 bg-black/75 z-[95] hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-4 space-y-3 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 id="mediaViewerTitle" class="font-bold text-sm text-slate-800 truncate">Anteprima</h3>
+        <button onclick="closeMediaViewer()" class="text-slate-500 hover:text-slate-800 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="mediaViewerBody" class="flex-1 overflow-auto flex items-center justify-center min-h-[260px] bg-slate-100 rounded-xl p-2"></div>
+    </div>
+  </div>
+
+  <!-- HEADER & SELETTORE PAPPAGALLI -->
+  <header class="bg-emerald-700 text-white p-4 shadow-md sticky top-0 z-30 no-print">
+    <div class="max-w-md mx-auto">
+      <div class="flex justify-between items-center mb-3">
+        <div class="flex items-center gap-2">
+          <h1 class="text-base font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-feather-pointed"></i> AvianCare
+          </h1>
+          <button onclick="switchTab('admin')" id="headerCloudBadge" class="text-[10px] bg-emerald-900/80 border border-emerald-500/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <i class="fa-solid fa-cloud"></i> Sync
+          </button>
+        </div>
+        <div class="flex gap-1.5 items-center">
+          <button onclick="openAlarmsModal()" class="relative bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition shadow-sm">
+            <i class="fa-solid fa-bell"></i>
+            <span id="activeAlarmsBadge" class="bg-slate-900 text-white text-[10px] px-1.5 rounded-full">0</span>
+          </button>
+          <button onclick="openCageQRModal()" title="QR Code Gabbia" class="bg-emerald-800 hover:bg-emerald-900 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-500">
+            <i class="fa-solid fa-qrcode"></i>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1" id="parrotSelector"></div>
+    </div>
+  </header>
+
+  <!-- CONTENUTO PRINCIPALE -->
+  <main class="max-w-md mx-auto p-4 space-y-4 no-print">
+
+    <!-- BANNER STATO DI SALUTE GLOBALE (CALI DI PESO IMPROVVISI / ANOMALIE) -->
+    <div id="healthAlertBanner" class="p-3.5 rounded-2xl border flex items-start gap-3 shadow-sm"></div>
+
+    <!-- BANNER TERAPIE FARMACOLOGICHE IN CORSO OGGI -->
+    <div id="activeMedsHomeBanner" class="hidden bg-indigo-50 border border-indigo-300 p-3.5 rounded-2xl text-xs text-indigo-950 space-y-1.5"></div>
+
+    <!-- ==========================================
+         TAB 1: HOME
+         ========================================== -->
+    <section id="tab-home" class="tab-content space-y-4">
+
+      <!-- ECCEZIONE: SEMPRE VISIBILE -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-1">
+          <div>
+            <h2 class="font-bold text-slate-700">Peso Giornaliero</h2>
+            <p class="text-xs text-slate-400" id="weightStatsSubtitle">Media 7gg: --g</p>
+          </div>
+          <span id="lastWeightBadge" class="text-lg font-extrabold text-emerald-700">-- g</span>
+        </div>
+
+        <form onsubmit="logWeight(event)" class="flex gap-2 my-3">
+          <input type="number" step="0.1" min="1" id="weightInput" placeholder="Peso di oggi in grammi (es. 92.5)" required
+            class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition">
+            Salva
+          </button>
+        </form>
+
+        <div class="h-48 mt-2">
+          <canvas id="weightChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ECCEZIONE: SEMPRE VISIBILE -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-1">
+          <h2 class="font-bold text-slate-700">Routine & Igiene (1-Tap)</h2>
+          <button onclick="openAlarmsModal()" class="text-[11px] text-emerald-700 font-semibold hover:underline">+ Orari/Sveglie</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">Tocca un riquadro appena hai svolto l'attività</p>
+        <div class="grid grid-cols-2 gap-2.5" id="quickTasksGrid"></div>
+      </div>
+
+      <!-- ECCEZIONE: SEMPRE VISIBILE -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex justify-between items-start gap-2">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h2 class="font-bold text-slate-700">Tempo Fuori Gabbia (Volo)</h2>
+              <button type="button" onclick="openFlightInfoModal()" title="Tempi minimi consigliati" class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 flex items-center justify-center text-[11px] font-bold">
+                <i class="fa-solid fa-info"></i>
+              </button>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5" id="flightTodaySubtitle">Oggi: 0 min (Minimo: 120 min)</p>
+            <p id="flightLiveElapsed" class="hidden text-[11px] font-bold text-rose-600 mt-0.5"></p>
+          </div>
+          <button id="flightTimerBtn" onclick="toggleFlightTimer()" class="bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0">
+            <i class="fa-solid fa-play"></i> Avvia Timer
+          </button>
+        </div>
+
+        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+          <div id="flightProgressBar" class="bg-emerald-500 h-full transition-all" style="width: 0%"></div>
+        </div>
+
+        <form onsubmit="logManualFlight(event)" class="flex gap-2">
+          <input type="number" min="1" id="manualFlightMins" placeholder="Aggiungi minuti manuali (es. 45)" required class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs">
+          <button type="submit" class="bg-slate-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold">+ Registra</button>
+        </form>
+
+        <!-- Impostazioni Minimo e Orario Azzeramento Giornaliero -->
+        <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500 block">Minimo giornaliero (min)</label>
+            <input type="number" min="15" step="5" id="flightMinTargetInput" onchange="saveFlightSettings()" class="w-full mt-0.5 bg-white border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-800">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-500 block">Reset timer giornaliero alle</label>
+            <input type="time" id="flightResetTimeInput" onchange="saveFlightSettings()" class="w-full mt-0.5 bg-white border border-slate-300 rounded-lg px-2 py-1.5 font-bold text-slate-800">
+          </div>
+        </div>
+
+        <!-- Storico & Statistiche a tendina -->
+        <details class="pt-1 border-t border-slate-100">
+          <summary class="text-xs font-bold text-emerald-700 cursor-pointer select-none py-1 flex items-center justify-between">
+            <span><i class="fa-solid fa-chart-column mr-1"></i> Storico & Statistiche Tempo Fuori Gabbia</span>
+          </summary>
+          <div class="mt-2.5 space-y-2.5">
+            <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl text-[11px] font-bold">
+              <button type="button" id="flightPeriodBtn-day" onclick="setFlightPeriod('day')" class="py-1.5 rounded-lg transition">Giorno</button>
+              <button type="button" id="flightPeriodBtn-week" onclick="setFlightPeriod('week')" class="py-1.5 rounded-lg transition">Settimana</button>
+              <button type="button" id="flightPeriodBtn-month" onclick="setFlightPeriod('month')" class="py-1.5 rounded-lg transition">Mese</button>
+            </div>
+            <div id="flightHistoryStats" class="grid grid-cols-3 gap-2 text-center text-xs"></div>
+            <div id="flightHistoryList" class="space-y-1.5 max-h-44 overflow-y-auto text-xs"></div>
+          </div>
+        </details>
+      </div>
+
+      <div id="lowPantryAlertHome" class="hidden bg-amber-50 border border-amber-300 p-3.5 rounded-2xl text-xs text-amber-900"></div>
+
+      <!-- COLLAPSIBLE: SCHEDA ANAGRAFICA & PROFILO -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Scheda Profilo & Anagrafica</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-1 border-t border-slate-100 space-y-2 text-xs text-slate-600">
+          <div class="flex justify-between items-start gap-2 pt-2">
+            <div id="parrotInfoFooter" class="space-y-1"></div>
+            <div class="flex gap-3 shrink-0">
+              <button onclick="openEditParrotModal()" class="text-emerald-600 font-semibold hover:underline">Modifica info</button>
+              <button onclick="deleteCurrentParrot()" class="text-rose-500 hover:underline">Elimina</button>
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ==========================================
+         TAB 2: DIETA & SCORTA CHOP
+         ========================================== -->
+    <section id="tab-diet" class="tab-content hidden space-y-4">
+
+      <!-- COLLAPSIBLE: REGISTRA PASTO & CONSUMO -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Registra Pasto & Consumo</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <div class="flex justify-end">
+            <span id="pelletAvgBadge" class="text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-lg">
+              Media pellet/dì: --g
+            </span>
+          </div>
+          <div id="dietDailyStatsBox" class="grid grid-cols-2 gap-2 text-xs bg-slate-50 border border-slate-200 p-2.5 rounded-xl"></div>
+
+          <form onsubmit="logDiet(event)" class="space-y-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-600">Tipo di Alimento</label>
+              <select id="foodType" class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                <option value="Estrusi">Estrusi / Pellet</option>
+                <option value="Chop Verdure Fresche">Chop Verdure Fresche</option>
+                <option value="Frutta">Frutta fresca</option>
+                <option value="Legumi / Germogli">Legumi o Germogli</option>
+                <option value="Mix Semi / Premi">Mix Semi / Frutta secca (Premi)</option>
+                <option value="Nettare Lori">Nettare specifico (Lori/Loricoli)</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs font-semibold text-slate-600">Grammi dati (g)</label>
+                <input type="number" step="0.1" min="0" id="foodOffered" placeholder="Es. 10" required class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-600">Grammi mangiati (g)</label>
+                <input type="number" step="0.1" min="0" id="foodEatenGrams" placeholder="Es. 8" required class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+              </div>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" id="deductFromPantry" checked class="rounded text-emerald-600">
+              Scala automaticamente i grammi dati dalla Dispensa
+            </label>
+            <input type="text" id="foodNotes" placeholder="Note (es. ha scartato le zucchine)" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+            <button type="submit" class="w-full bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-sm">Registra Pasto</button>
+          </form>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: SCORTA CHOP IN FREEZER -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Scorta "Chop" in Freezer</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <div class="flex justify-between items-center">
+            <p class="text-xs text-slate-500" id="chopTotalGramsSubtitle">Porzioni pronte congelate • Totale: 0g</p>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="updateChopBatch(-1)" class="w-8 h-8 rounded-xl bg-slate-200 font-bold text-slate-700 active:scale-95">-</button>
+              <span id="chopCountBadge" class="font-extrabold text-lg text-emerald-700 w-8 text-center">0</span>
+              <button type="button" onclick="updateChopBatch(1)" class="w-8 h-8 rounded-xl bg-emerald-600 font-bold text-white active:scale-95">+</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600">Peso singola porzione (g)</label>
+              <input type="number" step="1" min="1" id="chopPortionGramsInput" onchange="saveChopSettings()" class="w-full mt-0.5 bg-slate-50 border border-slate-300 rounded-xl p-2">
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600">Alert sotto quante porzioni?</label>
+              <input type="number" min="1" step="1" id="chopAlertThresholdInput" onchange="saveChopSettings()" class="w-full mt-0.5 bg-slate-50 border border-slate-300 rounded-xl p-2">
+            </div>
+          </div>
+          <div id="chopLowAlertBox" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-xs font-bold text-amber-900"></div>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: CONVERSIONE DIETA -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Conversione Dieta</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <div class="flex justify-between items-center gap-2">
+            <p class="text-xs text-slate-400">Transizione graduale da Semi a Estrusi/Fresco</p>
+            <span id="conversionPctLabel" class="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg shrink-0">70% Sano</span>
+          </div>
+          <input type="range" id="conversionSlider" min="0" max="100" step="5" oninput="previewConversion(this.value)" onchange="updateConversion(this.value)" class="w-full accent-emerald-600">
+          <div class="flex justify-between text-[11px] text-slate-400">
+            <span>0% (Solo Semi)</span>
+            <span>50% Misto</span>
+            <span>100% (Target Sano)</span>
+          </div>
+          <p class="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <i class="fa-solid fa-scale-balanced text-emerald-600 mr-1"></i>
+            <strong>Regola di sicurezza:</strong> Non ridurre mai la quota di semi se il peso scende oltre il 5% rispetto alla media.
+          </p>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: DISPENSA, SACCHI APERTI & SCADENZE -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Dispensa, Sacchi Aperti & Scadenze</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <div id="pantryList" class="space-y-2 text-xs"></div>
+
+          <details class="pt-2 border-t border-slate-100">
+            <summary class="text-xs font-semibold text-emerald-700 cursor-pointer">+ Aggiungi prodotto in dispensa</summary>
+            <form onsubmit="addPantryItem(event)" class="space-y-2 mt-3">
+              <input type="text" id="pantryName" placeholder="Prodotto (es. Harrison's High Potency)" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs">
+              <div class="grid grid-cols-3 gap-2">
+                <select id="pantryCategory" class="bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs">
+                  <option value="Estrusi">Estrusi</option>
+                  <option value="Mix Semi / Premi">Semi/Premi</option>
+                  <option value="Nettare Lori">Nettare Lori</option>
+                  <option value="Integratore">Integratore</option>
+                </select>
+                <input type="number" min="1" id="pantryGrams" placeholder="Grammi (es. 450)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs">
+                <input type="number" min="1" id="pantryDaily" placeholder="Consumo g/dì" required class="bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs">
+              </div>
+              <div>
+                <label class="text-[11px] text-slate-500">Data di scadenza confezione:</label>
+                <input type="date" id="pantryExpiry" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs mt-0.5">
+              </div>
+              <button type="submit" class="w-full bg-slate-800 text-white py-2 rounded-xl text-xs font-semibold">Aggiungi alla Dispensa</button>
+            </form>
+          </details>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: STORICO PASTI -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Storico Pasti</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100">
+          <div id="dietLogList" class="space-y-2 text-sm"></div>
+        </div>
+      </details>
+
+      <!-- ECCEZIONE: SEMPRE VISIBILE -->
+      <div class="bg-slate-800 text-white p-4 rounded-2xl shadow-sm space-y-2.5 border-l-4 border-rose-500">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-sm flex items-center gap-2 text-rose-300">
+            <i class="fa-solid fa-skull-crossbones"></i> Allerta Pericoli Letali in Cucina & Cibi
+          </h3>
+          <button onclick="switchTab('safety')" class="text-[11px] underline text-emerald-300">Guida & SOS →</button>
+        </div>
+        <p class="text-[11px] text-slate-300">Questi elementi sono <strong>universalmente tossici o mortali per il 100% delle specie</strong> di pappagalli, anche in tracce minime:</p>
+        <div class="grid grid-cols-1 gap-1.5 text-xs">
+          <div class="bg-slate-700/70 p-2.5 rounded-xl"><strong>🍳 Pentole antiaderenti (PTFE / Teflon):</strong> Surriscaldate rilasciano gas inodori che causano emorragia polmonare fulminante in pochi minuti, anche in stanze adiacenti.</div>
+          <div class="bg-slate-700/70 p-2.5 rounded-xl"><strong>🥑 Avocado, Cioccolato, Caffè e Alcol:</strong> Cardiotossici ed epatotossici letali (persina, teobromina, caffeina, etanolo).</div>
+          <div class="bg-slate-700/70 p-2.5 rounded-xl"><strong>🧅 Cipolla, Aglio, Porro ed Erba cipollina:</strong> Crudi o cotti, distruggono i globuli rossi (anemia emolitica).</div>
+          <div class="bg-slate-700/70 p-2.5 rounded-xl"><strong>🍎 Semi di Mela/Pera e Noccioli (Pesca, Ciliegia, Albicocca, Prugna):</strong> Rilasciano cianuro. (La sola polpa ben lavata senza semi è sicura).</div>
+          <div class="bg-slate-700/70 p-2.5 rounded-xl"><strong>🧂 Xilitolo, Sale, Funghi, Rabarbaro e Arachidi con guscio:</strong> Rischio di ipoglicemia letale, tossicità renale e spore fungine di <em>Aspergillus</em>.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         TAB 3: SALUTE
+         ========================================== -->
+    <section id="tab-health" class="tab-content hidden space-y-4">
+
+      <!-- TASTO RAPIDO REPORT VET+ IN CIMA A SALUTE -->
+      <button onclick="exportVetReport()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white py-3 px-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm active:scale-95 transition">
+        <i class="fa-solid fa-file-medical"></i> Esporta Scheda Clinica (Vet+)
+      </button>
+
+      <!-- COLLAPSIBLE: ORARIO NANNA & SONNO (12H) -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-moon text-indigo-600"></i> Orario Nanna & Sonno (12h)
+          </span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <p class="text-xs text-slate-500" id="sleepWindowSummary">Finestra indicativa: --:-- → --:--</p>
+          <div class="flex items-center gap-2 text-xs">
+            <label class="font-semibold text-slate-600 shrink-0">A che ora va a dormire?</label>
+            <input type="time" id="bedtimeInput" onchange="saveBedtime(this.value)" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-bold text-slate-800">
+          </div>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: PIANO TERAPEUTICO & CALCOLO DOSI -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-syringe text-indigo-600"></i> Piano Terapeutico & Calcolo Dosi
+          </span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <div class="flex justify-between items-center gap-2">
+            <p class="text-xs text-slate-400">Ricalcolo ml automatico sul peso attuale + sveglie</p>
+            <button type="button" onclick="toggleAllMedAlarms()" id="toggleAllMedsAlarmBtn" class="hidden shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">
+              🔔 Sveglie Piano
+            </button>
+          </div>
+
+          <div id="medicationsList" class="space-y-2 text-xs"></div>
+
+          <details class="pt-2 border-t border-slate-100">
+            <summary class="text-xs font-semibold text-indigo-700 cursor-pointer">+ Aggiungi Terapia / Calcola Dose Veterinaria</summary>
+            <form onsubmit="addMedication(event)" class="space-y-2 mt-3 text-xs">
+              <input type="text" id="medName" placeholder="Farmaco / Integratore (es. Meloxicam)" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500 font-semibold">Prescrizione (mg/kg)</label>
+                  <input type="number" step="0.01" min="0.01" id="medMgKg" oninput="previewMedCalc()" placeholder="Es. 1.0" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500 font-semibold">Concentrazione (mg/ml)</label>
+                  <input type="number" step="0.01" min="0.01" id="medConc" oninput="previewMedCalc()" placeholder="Es. 1.5" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2">
+                </div>
+              </div>
+              <div id="medCalcPreview" class="p-2 rounded-lg bg-indigo-50 text-indigo-900 font-semibold text-[11px]">
+                Inserisci mg/kg e mg/ml prescritti dal Veterinario per calcolare i ml esatti sul peso attuale.
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <select id="medFreq" class="bg-slate-50 border border-slate-300 rounded-xl p-2">
+                  <option value="2">2 volte al dì (Mattina + Sera)</option>
+                  <option value="1">1 volta al dì</option>
+                </select>
+                <input type="number" min="1" id="medDays" placeholder="Durata giorni (es. 7)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2">
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500 font-semibold">Ora Sveglia / Alert</label>
+                  <input type="time" id="medAlarmTime" value="09:00" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 font-bold">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500 font-semibold">Tipo Avviso</label>
+                  <select id="medAlarmMode" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2">
+                    <option value="alarm">🚨 Sveglia Sonora</option>
+                    <option value="push">🔔 Solo Notifica</option>
+                    <option value="none">Nessuna sveglia</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="text-[10px] text-slate-500 font-semibold">Suono Sveglia Farmaco</label>
+                <select id="medSoundStyle" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2">
+                  <option value="chime">🎵 Carillon Dolce</option>
+                  <option value="trill">🔔 Trillo Classico</option>
+                  <option value="urgent">⏰ Doppio Bip Urgente</option>
+                  <option value="pulse">🎶 Impulso Rapido</option>
+                </select>
+              </div>
+              <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-xl font-semibold">Avvia Piano Terapeutico</button>
+            </form>
+          </details>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: TEST INFETTIVOLOGICI, CHECK-UP & PDF ESAMI -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Test Infettivologici, Check-up & PDF Esami</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <p class="text-xs text-slate-400">Tocca un esito per aggiornarlo o carica i referti PDF del veterinario</p>
+          <div id="infectiousTestsGrid" class="grid grid-cols-2 gap-2 text-xs"></div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+            <div>
+              <span class="font-semibold text-slate-600">Ultimo Check-up Vet Annuale:</span>
+              <div id="annualCheckupCountdown" class="text-[11px] text-slate-500">--</div>
+            </div>
+            <input type="date" id="lastCheckupDateInput" onchange="saveLastCheckupDate(this.value)" class="bg-slate-50 border border-slate-300 rounded-xl p-1.5 text-xs">
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 space-y-2">
+            <form onsubmit="addVetExamPdf(event)" class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2 text-xs">
+              <div class="font-semibold text-slate-700">📄 Carica PDF Esame / Referto Veterinario</div>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="examPdfTitle" placeholder="Titolo (es. Emocromo / Rx)" required class="bg-white border border-slate-300 rounded-lg p-2 text-xs">
+                <input type="date" id="examPdfDate" required class="bg-white border border-slate-300 rounded-lg p-2 text-xs">
+              </div>
+              <input type="file" id="examPdfFileInput" accept="application/pdf" required class="w-full text-[11px] text-slate-600">
+              <div class="text-[10px] text-slate-400">I PDF restano archiviati in IndexedDB su questo dispositivo per non saturare localStorage né bloccare Family Sync.</div>
+              <button type="submit" class="w-full bg-slate-800 text-white py-2 rounded-lg font-semibold">Salva Referto PDF</button>
+            </form>
+            <div id="vetExamPdfsList" class="space-y-1.5 text-xs"></div>
+          </div>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: CHECK FECI -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Check Feci</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100">
+          <form onsubmit="logHealth(event)" class="space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs font-semibold text-slate-600">Stato Feci</label>
+                <select id="droppingsState" class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                  <option value="Normali">Normali (formate)</option>
+                  <option value="Liquide / Poliuria">Liquide / Poliuria</option>
+                  <option value="Diarrea">Diarrea (non formate)</option>
+                  <option value="Semi indigeriti (!)">Con semi indigeriti (!)</option>
+                  <option value="Colore anomalo (!)">Nere / Rosse (!)</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-600">Colore Urati</label>
+                <select id="uratesState" class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+                  <option value="Bianchi / Crema">Bianchi / Crema (OK)</option>
+                  <option value="Gialli / Verdi (Allerta)">Gialli o Verdi (Allerta)</option>
+                </select>
+              </div>
+            </div>
+
+            <input type="text" id="healthNotes" placeholder="Note sulle feci o osservazioni..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+            <button type="submit" class="w-full bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-sm">Salva Check Feci</button>
+          </form>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: GALLERIA COMPARATIVA PIUMAGGIO & FECI -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Galleria Comparativa Piumaggio & Feci</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <p class="text-xs text-slate-400">Scatta o carica foto per confrontare, visionare o eliminare</p>
+
+          <form onsubmit="addPhotoEntry(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div class="grid grid-cols-2 gap-2">
+              <select id="photoZone" class="bg-white border border-slate-300 rounded-lg p-2 text-xs">
+                <option value="Petto / Ventre">Petto / Ventre</option>
+                <option value="Dorso / Ali">Dorso / Ali</option>
+                <option value="Becco / Cera">Becco / Cera</option>
+                <option value="Zampe">Zampe</option>
+                <option value="Feci Sospette">Foto Feci</option>
+              </select>
+              <input type="text" id="photoCaption" placeholder="Nota breve (es. inizio muta)" class="bg-white border border-slate-300 rounded-lg p-2 text-xs">
+            </div>
+            <input type="file" id="photoFileInput" accept="image/*" required class="w-full text-xs text-slate-600">
+            <button type="submit" class="w-full bg-slate-800 text-white py-2 rounded-lg text-xs font-semibold">
+              <i class="fa-solid fa-camera mr-1"></i> Salva Foto Compressa
+            </button>
+          </form>
+
+          <div id="photoCompareContainer" class="hidden space-y-2 pt-2 border-t border-slate-100">
+            <div class="text-xs font-bold text-slate-600">Confronto Prima / Dopo</div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <select id="compareSelectLeft" onchange="renderPhotoComparison()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-[11px] mb-1.5"></select>
+                <div id="compareBoxLeft" class="aspect-square bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border"></div>
+              </div>
+              <div>
+                <select id="compareSelectRight" onchange="renderPhotoComparison()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-[11px] mb-1.5"></select>
+                <div id="compareBoxRight" class="aspect-square bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center border"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="photosGalleryList" class="space-y-1.5 pt-2 border-t border-slate-100 text-xs"></div>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: DIARIO CLINICO -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Diario Clinico</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100">
+          <div id="healthLogList" class="space-y-2 text-sm"></div>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: VERIFICA SICUREZZA GABBIA & POSATOI -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-ruler-combined text-emerald-600"></i> Verifica Sicurezza Gabbia & Posatoi
+          </span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <p class="text-xs text-slate-400">Controllo periodico di dimensioni, distanza sbarre e posatoi naturali</p>
+
+          <form onsubmit="saveCageSetup(event)" class="space-y-2.5 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="font-semibold text-slate-600 text-[11px]">Taglia Specie</label>
+                <select id="cageSizeClass" class="w-full mt-0.5 bg-slate-50 border border-slate-300 rounded-xl p-2">
+                  <option value="xs">Micro/Piccola (Ondulati, Inseparabili, Forpus)</option>
+                  <option value="sm">Medio-Piccola (Calopsite, Conuri, Parrocchetti)</option>
+                  <option value="md">Media (Cenerino, Amazzone, Eclectus, Senegal, Pionus)</option>
+                  <option value="lg">Grande (Grandi Ara, Cacatua Molucche/Alba)</option>
+                </select>
+              </div>
+              <div>
+                <label class="font-semibold text-slate-600 text-[11px]">Distanza Sbarre (mm)</label>
+                <input type="number" step="0.5" min="1" id="cageBarSpacing" placeholder="Es. 15" required class="w-full mt-0.5 bg-slate-50 border border-slate-300 rounded-xl p-2">
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <input type="number" min="10" id="cageWidth" placeholder="Largh. cm (es. 80)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2">
+              <input type="number" min="10" id="cageDepth" placeholder="Prof. cm (es. 55)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2">
+              <input type="number" min="10" id="cageHeight" placeholder="Alt. cm (es. 90)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2">
+            </div>
+            <label class="flex items-center gap-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border">
+              <input type="checkbox" id="cageNaturalPerches" class="rounded text-emerald-600">
+              Posatoi tutti in legno naturale a diametro variabile (NO plastica / carta vetrata!)
+            </label>
+            <button type="submit" class="w-full bg-slate-800 text-white py-2 rounded-xl font-semibold">Verifica Sicurezza Setup</button>
+          </form>
+          <div id="cageAuditResult" class="text-xs"></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ==========================================
+         TAB 4: TRAINING (TRICK + PREFERENZE OGGETTI)
+         ========================================== -->
+    <section id="tab-training" class="tab-content hidden space-y-4">
+
+      <!-- COLLAPSIBLE: TRAINING & TRICK -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm">Training & Trick</span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <p class="text-xs text-slate-400">Tocca il livello per far avanzare la padronanza</p>
+          <div id="tricksList" class="space-y-2 text-xs"></div>
+          <form onsubmit="addTrick(event)" class="pt-2 border-t border-slate-100 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" id="trickName" placeholder="Esercizio (es. Trasportino)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs">
+              <input type="text" id="trickTreat" placeholder="Premio top (es. Pinolo)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs">
+            </div>
+            <button type="submit" class="w-full bg-emerald-600 text-white py-2 rounded-xl text-xs font-semibold">+ Aggiungi Esercizio</button>
+          </form>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: OGGETTI CHE PIACCIONO / SPAVENTANO -->
+      <details class="card-collapsible bg-white rounded-2xl shadow-sm border border-slate-200">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-bold text-slate-700 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-heart-circle-exclamation text-amber-500"></i> Oggetti: Cosa Piace / Cosa Spaventa
+          </span>
+          <i class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <p class="text-xs text-slate-400">Questa lista compare anche nel Pet Sitter Mode, nella Mini Scheda e nel Report Vet</p>
+
+          <form onsubmit="addObjectPref(event)" class="space-y-2 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <select id="objPrefType" class="bg-slate-50 border border-slate-300 rounded-xl p-2 font-semibold">
+                <option value="like">💚 Piace / Gradito</option>
+                <option value="dislike">⚡ Non piace / Spaventa</option>
+              </select>
+              <input type="text" id="objPrefName" placeholder="Oggetto (es. Cappello rosso, Tappi)" required class="bg-slate-50 border border-slate-300 rounded-xl p-2">
+            </div>
+            <button type="submit" class="w-full bg-slate-800 text-white py-2 rounded-xl font-semibold">+ Aggiungi alla Lista</button>
+          </form>
+
+          <div id="objectPrefsList" class="space-y-1.5 text-xs"></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ==========================================
+         TAB 5: GUIDA / SOS
+         ========================================== -->
+    <section id="tab-safety" class="tab-content hidden space-y-4">
+
+      <!-- VOLANTINO SOS & PET SITTER MODE IN CIMA -->
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="openSOSGenerator()" class="bg-rose-600 hover:bg-rose-700 text-white p-4 rounded-2xl shadow-sm text-left space-y-1 transition active:scale-95">
+          <i class="fa-solid fa-bullhorn text-xl"></i>
+          <div class="font-bold text-sm">Volantino SOS</div>
+          <div class="text-[11px] opacity-90">Genera scheda smarrimento 1-click</div>
+        </button>
+
+        <button onclick="openPetSitterModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-2xl shadow-sm text-left space-y-1 transition active:scale-95">
+          <i class="fa-solid fa-suitcase-rolling text-xl"></i>
+          <div class="font-bold text-sm">Pet Sitter Mode</div>
+          <div class="text-[11px] opacity-90">Guida vacanze, nanna & preferenze</div>
+        </button>
+      </div>
+
+      <!-- COLLAPSIBLE EVIDENZIATO: CHECKLIST PRIMO SOCCORSO -->
+      <details class="card-collapsible bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 rounded-2xl shadow-md border-2 border-amber-400">
+        <summary class="p-3.5 flex justify-between items-center gap-2 select-none">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <i class="fa-solid fa-kit-medical text-base"></i>
+            </span>
+            <div>
+              <div class="font-extrabold text-rose-950 text-sm leading-tight">Checklist Primo Soccorso</div>
+              <div class="text-[11px] text-amber-900 font-semibold">Verifica cosa hai già pronto in casa</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span id="firstAidProgressBadge" class="text-[11px] font-extrabold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shadow-sm">0/6</span>
+            <i class="fa-solid fa-chevron-down text-rose-700 text-xs transition-transform duration-200 collapse-chevron"></i>
+          </div>
+        </summary>
+        <div class="px-4 pb-4 pt-3 border-t border-amber-300/80 bg-white/80 rounded-b-2xl">
+          <div id="firstAidChecklist" class="space-y-1.5 text-xs"></div>
+        </div>
+      </details>
+
+      <!-- COLLAPSIBLE: COSA FARE IN CASO DI EMERGENZA -->
+      <details class="card-collapsible bg-rose-50 rounded-2xl shadow-sm border-2 border-rose-300 text-rose-950">
+        <summary class="p-4 flex justify-between items-center select-none">
+          <span class="font-extrabold text-sm uppercase tracking-wide text-rose-800">
+            🚨 COSA FARE IN CASO DI EMERGENZA
+          </span>
+          <i class="fa-solid fa-chevron-down text-rose-600 text-xs transition-transform duration-200 collapse-chevron"></i>
+        </summary>
+        <div class="px-4 pb-4 pt-1 border-t border-rose-200 text-xs">
+          <!-- AVVISO A CARATTERI CUBITALI IN APERTURA -->
+          <div class="mt-3 mb-3 bg-rose-700 text-white p-4 rounded-2xl border-2 border-rose-900 shadow-md text-center space-y-2">
+            <div class="text-lg sm:text-xl font-black uppercase leading-tight tracking-wide">
+              ⚠️ PORTALO SUBITO DA UN VETERINARIO AVIARIO!
+            </div>
+            <div class="text-xs sm:text-sm font-extrabold uppercase leading-snug text-amber-200">
+              NON PROVARE RIMEDI FAI-DA-TE IN CASA E NON IGNORARE MAI I SEGNALI!
+            </div>
+            <p class="text-[11px] text-rose-100 leading-snug font-medium">
+              I pappagalli nascondono il malessere fino all'estremo: quando mostrano sintomi evidenti, ogni minuto conta. Le indicazioni qui sotto servono solo a stabilizzarlo mentre stai già andando dal veterinario.
+            </p>
+          </div>
+
+          <ul class="list-disc pl-4 space-y-1.5">
+            <li><strong>Sanguinamento (unghia o calamo spezzato):</strong> Applica subito amido di mais o polvere emostatica premendo con garza pulita per 60–90 secondi (mai su ferite profonde o emorragie interne). Se un calamo di sangue attivo non si ferma o il sangue è abbondante, vai immediatamente dal veterinario aviario.</li>
+            <li><strong>Pappagallo sul fondo gabbia / arruffato / letargico:</strong> Isolalo subito in una zona calda costante (<strong>28°C–30°C</strong>), in penombra e silenzio, con acqua e cibo a portata sul fondo, evitando correnti d'aria, e chiama il veterinario aviario.</li>
+            <li><strong>Trauma da vetro, parete o volo contro ostacolo:</strong> Mettilo in un trasportino piccolo, buio e silenzioso a temperatura ambiente (<strong>NON scaldare</strong> se sospetti un trauma cranico) e recati in clinica per valutazione neurologica/oculare.</li>
+            <li><strong>Inalazione fumi o vapori tossici (PTFE/Teflon, fumo, spray, candele):</strong> Porta immediatamente l'animale all'aria aperta pulita e vai d'urgenza dal veterinario per ossigenoterapia.</li>
+            <li><strong>Difficoltà respiratoria (respiro a becco aperto, coda che pompa, sibili):</strong> Riduci al minimo ogni stress o manipolazione, mantieni ambiente tranquillo e contatta subito il veterinario aviario.</li>
+            <li><strong>Corpo estraneo o ingestione sostanza tossica:</strong> Non indurre il vomito di tua iniziativa; porta con te la confezione/etichetta o la foto dell'elemento ingerito per mostrarla al veterinario.</li>
+            <li><strong>Rigurgito persistente o vomito (testa scossa con muco sulle piume):</strong> Non confonderlo col corteggiamento: se il piumaggio della testa è sporco e l'animale è abbattuto, rimuovi semi/cibi pesanti, tieni al caldo e chiama subito il veterinario.</li>
+          </ul>
+        </div>
+      </details>
+
+      <!-- ECCEZIONE: SEMPRE VISIBILE -->
+      <div class="bg-slate-800 text-white p-4 rounded-2xl shadow-sm space-y-3 border-l-4 border-rose-500">
+        <div>
+          <h3 class="font-bold text-sm flex items-center gap-2 text-rose-300">
+            <i class="fa-solid fa-triangle-exclamation"></i> Allerta Pericoli Letali in Casa (Universali)
+          </h3>
+          <p class="text-[11px] text-slate-300 mt-0.5">Cibi tossici universali e pericoli domestici mortali per qualsiasi pappagallo:</p>
+        </div>
+        <div class="space-y-2 text-xs">
+          <div class="bg-slate-700/80 p-2.5 rounded-xl">
+            <strong class="text-rose-300">1. Cibi Tossici Universali:</strong> Vietati categoricamente <strong>Avocado</strong> (persina), <strong>Cioccolato e Cacao</strong> (teobromina/caffeina), <strong>Caffè, Tè e Alcol</strong>, <strong>Cipolla, Aglio, Porro ed Erba cipollina</strong>, <strong>Semi di mela/pera e noccioli</strong> (pesca, ciliegia, albicocca, prugna – rilasciano cianuro), <strong>Xilitolo</strong>, <strong>Sale</strong>, <strong>Funghi</strong>, <strong>Rabarbaro</strong> e <strong>Arachidi con guscio</strong> (spore <em>Aspergillus</em>).
+          </div>
+          <div class="bg-slate-700/80 p-2.5 rounded-xl">
+            <strong class="text-rose-300">2. Gas da PTFE / Teflon & Elettrodomestici:</strong> Padelle antiaderenti, piastre per capelli, friggitrici ad aria, ferri da stiro o forni autopulenti con rivestimento in PTFE surriscaldato rilasciano gas letali in pochi minuti.
+          </div>
+          <div class="bg-slate-700/80 p-2.5 rounded-xl">
+            <strong class="text-rose-300">3. Inquinanti Aerodispersi:</strong> Vietati candele profumate, incensi, diffusori di oli essenziali, profumatori elettrici, deodoranti spray, fumo di sigaretta/svapo, ammoniaca, candeggina e vernici.
+          </div>
+          <div class="bg-slate-700/80 p-2.5 rounded-xl">
+            <strong class="text-rose-300">4. Metalli Pesanti & Piante Tossiche:</strong> Evitare zinco, piombo, rame e ruggine (preferire acciaio inox) e tenere lontane piante come Pothos, Monstera, Filodendro, Dieffenbachia, Stella di Natale, Oleandro e Tasso.
+          </div>
+          <div class="bg-slate-700/80 p-2.5 rounded-xl">
+            <strong class="text-rose-300">5. Trappole Fisiche in Casa:</strong> Finestre senza zanzariere fisse, vetri/specchi non schermati, ventilatori accesi, pentole scoperte e WC aperto.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         TAB 6: FAMILY SYNC & BACKUP (TUTTO SEMPRE ESPANSO)
+         ========================================== -->
+    <section id="tab-admin" class="tab-content hidden space-y-4">
+
+      <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-emerald-200 space-y-4">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 text-lg">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-slate-800 text-sm">Family Sync – Sincronizza Dispositivi</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Collega in 1 tocco i telefoni o tablet della tua famiglia: i dati si aggiorneranno da soli su tutti gli schermi.</p>
+          </div>
+        </div>
+
+        <div id="syncUnlinkedView" class="space-y-3">
+          <button onclick="createOneClickFamilyRoom()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 px-4 rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-2 active:scale-95 transition">
+            <i class="fa-solid fa-cloud-arrow-up text-base"></i> Attiva Sincronizzazione (Crea Codice)
+          </button>
+
+          <div class="relative flex py-1 items-center">
+            <div class="flex-grow border-t border-slate-200"></div>
+            <span class="flex-shrink mx-3 text-[11px] text-slate-400 font-semibold uppercase">oppure hai già un codice su un altro telefono?</span>
+            <div class="flex-grow border-t border-slate-200"></div>
+          </div>
+
+          <form onsubmit="joinExistingRoomByCode(event)" class="flex gap-2">
+            <input type="text" id="joinRoomCodeInput" placeholder="Inserisci Codice (es. ARA-4829-X7K2)" required
+              class="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-mono uppercase tracking-wider">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shrink-0">
+              Collegati
+            </button>
+          </form>
+        </div>
+
+        <div id="syncLinkedView" class="hidden space-y-3">
+          <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl text-center space-y-1">
+            <div class="text-[11px] text-emerald-800 font-semibold flex items-center justify-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Sincronizzazione Automatica Attiva
+            </div>
+            <div class="text-xs text-slate-500">Il tuo Codice Famiglia privato:</div>
+            <div id="displayFamilyRoomCode" class="font-mono font-extrabold text-lg tracking-widest text-slate-900 select-all">---</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="openFamilyInviteQRModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition shadow-sm">
+              <i class="fa-solid fa-qrcode text-sm"></i> Mostra QR Invito
+            </button>
+            <button onclick="shareFamilyInviteLink()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition shadow-sm">
+              <i class="fa-brands fa-whatsapp text-base"></i> Invia Link Invito
+            </button>
+          </div>
+
+          <div class="flex justify-between items-center pt-1 text-[11px] text-slate-400">
+            <button onclick="autoPullCloud(true)" class="text-emerald-700 font-semibold hover:underline">🔄 Forza aggiornamento ora</button>
+            <button onclick="unlinkDeviceFromRoom()" class="text-rose-500 hover:underline">Scollega questo dispositivo</button>
+          </div>
+        </div>
+
+        <p id="publicSyncNotice" class="hidden text-[11px] text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-xl"></p>
+      </div>
+
+      <!-- Backup & Ripristino Dati Locale (SEMPRE ESPANSO) -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-2">
+        <h3 class="font-bold text-slate-700 text-sm">Backup File Locale (JSON)</h3>
+        <p class="text-xs text-slate-400">Salva una copia offline di sicurezza sul tuo telefono o PC (i file PDF CITES/referti restano nell'archivio IndexedDB locale).</p>
+        <div class="flex gap-2 pt-1">
+          <button onclick="downloadBackupJSON()" class="flex-1 bg-slate-800 text-white py-2 rounded-xl text-xs font-semibold">
+            <i class="fa-solid fa-download mr-1"></i> Scarica JSON
+          </button>
+          <label class="flex-1 bg-slate-200 text-slate-800 py-2 rounded-xl text-xs font-semibold text-center cursor-pointer">
+            <i class="fa-solid fa-upload mr-1"></i> Ripristina JSON
+            <input type="file" accept=".json" onchange="restoreBackupJSON(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODAL QR CODE INVITO FAMIGLIA -->
+  <div id="familyInviteQrModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mx-auto text-xl">
+        <i class="fa-solid fa-qrcode"></i>
+      </div>
+      <div>
+        <h3 class="font-extrabold text-base text-slate-800">Aggiungi un altro Dispositivo</h3>
+        <p class="text-xs text-slate-500 mt-1">Apri la <strong>Fotocamera</strong> sull'altro telefono o tablet e inquadra questo codice:</p>
+      </div>
+      <div id="familyQrCanvasBox" class="flex justify-center p-3 bg-white border-2 border-indigo-100 rounded-2xl mx-auto"></div>
+      <div class="text-xs text-slate-500">
+        Oppure digita il codice: <strong id="modalShortRoomCode" class="font-mono text-slate-800">---</strong>
+      </div>
+      <button onclick="closeFamilyInviteQRModal()" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold">Chiudi</button>
+    </div>
+  </div>
+
+  <!-- MODAL CENTRO SVEGLIE SONORE & NOTIFICHE PUSH -->
+  <div id="alarmsModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-3.5 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-bell text-amber-500"></i> Sveglie & Notifiche Push Orarie
+        </h3>
+        <button onclick="closeAlarmsModal()" class="text-slate-400 hover:text-slate-700 text-lg"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex justify-between items-center text-xs">
+        <span id="notifPermissionStatus" class="text-slate-600">Permesso Notifiche Push: verifica...</span>
+        <div class="flex gap-1.5">
+          <button onclick="requestNotificationPerm()" class="bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-semibold text-[11px]">Attiva Push</button>
+          <button onclick="testSoundAlarm()" class="bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg font-semibold text-[11px]">Test Suono</button>
+        </div>
+      </div>
+
+      <form onsubmit="addReminderAlarm(event)" class="space-y-2 bg-emerald-50/60 border border-emerald-200 p-3 rounded-xl text-xs">
+        <div class="font-bold text-emerald-950">Nuova Sveglia o Notifica Giornaliera</div>
+        <div class="grid grid-cols-2 gap-2">
+          <select id="remPreset" onchange="syncReminderPreset(this.value)" class="bg-white border border-slate-300 rounded-xl p-2">
+            <option value="⚖️ Pesare il pappagallo a digiuno">⚖️ Pesata mattutina</option>
+            <option value="💧 Cambio acqua fresca">💧 Cambio acqua fresca</option>
+            <option value="🥦 Servire Chop / Cibo fresco">🥦 Dare Chop / Cibo</option>
+            <option value="🗑️ Rimuovere avanzi freschi">🗑️ Togliere cibo fresco</option>
+            <option value="💊 Somministrare Farmaco / Terapia">💊 Dare Farmaco</option>
+            <option value="🌙 Mettere a letto (Copertura/Buio)">🌙 Mettere a letto (Buio)</option>
+            <option value="🧹 Pulizia fondo gabbia">🧹 Pulizia gabbia</option>
+            <option value="custom">✏️ Attività personalizzata...</option>
+          </select>
+          <input type="time" id="remTime" value="08:00" required class="bg-white border border-slate-300 rounded-xl p-2 font-bold">
+        </div>
+        <input type="text" id="remCustomTitle" placeholder="Titolo promemoria (es. Pesare Kiwi)" value="⚖️ Pesare il pappagallo a digiuno" required class="w-full bg-white border border-slate-300 rounded-xl p-2">
+        <div class="grid grid-cols-2 gap-2">
+          <select id="remMode" class="bg-white border border-slate-300 rounded-xl p-2 font-semibold">
+            <option value="alarm">🚨 Sveglia Sonora + Push</option>
+            <option value="push">🔔 Solo Notifica Push</option>
+          </select>
+          <select id="remSoundStyle" class="bg-white border border-slate-300 rounded-xl p-2 font-semibold">
+            <option value="chime">🎵 Suono: Carillon Dolce</option>
+            <option value="trill">🔔 Suono: Trillo Classico</option>
+            <option value="urgent">⏰ Suono: Doppio Bip Urgente</option>
+            <option value="pulse">🎶 Suono: Impulso Rapido</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-emerald-700 text-white py-2 rounded-xl font-bold">+ Salva Promemoria Giornaliero</button>
+      </form>
+
+      <div id="alarmsListContainer" class="space-y-2 text-xs"></div>
+
+      <p class="text-[11px] text-slate-400 leading-snug">
+        💡 Cliccando su <strong>"📅 Telefono"</strong> accanto a una voce installi l'allarme nativo nel sistema iOS/Android così suonerà anche a telefono bloccato!
+      </p>
+    </div>
+  </div>
+
+  <!-- MODAL QR CODE DA ATTACCARE ALLA GABBIA -->
+  <div id="cageQrModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 text-center space-y-3 shadow-xl">
+      <h3 class="font-bold text-base text-slate-800" id="qrModalParrotTitle">QR Code Gabbia</h3>
+      <p class="text-xs text-slate-500">Stampa e attacca questo QR sulla gabbia: inquadrandolo apre subito la scheda di questo pappagallo.</p>
+      <div id="qrCodeCanvasBox" class="flex justify-center p-3 bg-white border rounded-xl mx-auto"></div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeCageQRModal()" class="flex-1 bg-slate-200 text-slate-700 py-2 rounded-xl text-xs font-semibold">Chiudi</button>
+        <button onclick="printCageQRTag()" class="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-semibold"><i class="fa-solid fa-print mr-1"></i> Stampa Tag</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL AGGIUNGI / MODIFICA PAPPAGALLO -->
+  <div id="parrotModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-xl max-h-[90vh] overflow-y-auto">
+      <h3 class="font-bold text-lg text-slate-800" id="parrotModalTitle">Aggiungi Pappagallo</h3>
+      <form onsubmit="saveParrotModal(event)" class="space-y-2.5">
+        <input type="hidden" id="editParrotMode" value="new">
+
+        <!-- FOTO PROFILO -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+          <div id="newParrotAvatarPreview" class="w-16 h-16 rounded-full overflow-hidden bg-emerald-100 border-2 border-emerald-300 flex items-center justify-center shrink-0 text-emerald-700 font-bold text-xl">
+            <i class="fa-solid fa-feather-pointed"></i>
+          </div>
+          <div class="flex-1 space-y-1.5 min-w-0">
+            <label class="text-[11px] font-semibold text-slate-700 block">Foto Profilo Pappagallo:</label>
+            <input type="file" id="newParrotAvatarInput" accept="image/*" onchange="handleAvatarFileSelect(event)" class="w-full text-[11px] text-slate-600">
+            <button type="button" id="removeAvatarBtn" onclick="clearPendingAvatar()" class="hidden text-[11px] text-rose-600 font-semibold hover:underline">
+              Rimuovi foto profilo
+            </button>
+          </div>
+        </div>
+
+        <input type="text" id="newParrotName" placeholder="Nome (es. Rio)" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="text" id="newParrotSpecies" placeholder="Specie (es. Calopsite, Cenerino, Eclectus, Ara)" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="text" id="newParrotRing" placeholder="Anello FOI / CITES / Microchip" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="number" step="0.1" min="1" id="newParrotWeight" placeholder="Peso iniziale in grammi (es. 90)" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="text" id="newParrotVet" placeholder="Veterinario Aviario & Telefono" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="text" id="newParrotSounds" placeholder="Parole/fischi a cui risponde (per SOS)" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+
+        <input type="text" id="newParrotOwnerName" placeholder="Tuo Nome e Cognome" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="text" id="newParrotOwnerPhone" placeholder="Tuo telefono e città" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+        <input type="text" id="newParrotSocial" placeholder="Social (es. Instagram @nome)" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm">
+
+        <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-2.5 space-y-1.5">
+          <div class="flex justify-between items-center gap-2">
+            <label class="text-[11px] font-semibold text-slate-600 block">Documento PDF CITES (opzionale):</label>
+            <button type="button" id="modalViewCitesBtn" onclick="viewCurrentParrotCitesPdf()" class="hidden text-[11px] font-bold text-emerald-700 hover:underline">
+              <i class="fa-solid fa-file-pdf mr-0.5"></i> Vedi attuale
+            </button>
+          </div>
+          <div id="modalCitesPdfStatus" class="text-[11px] text-emerald-700 font-semibold hidden"></div>
+          <input type="file" id="newParrotCitesPdf" accept="application/pdf" class="w-full text-[11px] text-slate-600">
+          <div class="text-[10px] text-slate-400">Archiviato in IndexedDB locale (non satura localStorage né Family Sync).</div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="toggleModal(false)" class="flex-1 bg-slate-200 text-slate-700 py-2.5 rounded-xl text-sm font-semibold">Annulla</button>
+          <button type="submit" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-semibold">Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- AREA DI STAMPA -->
+  <div id="printReportArea" class="hidden print-only p-8 max-w-3xl mx-auto text-sm"></div>
+
+  <!-- BOTTOM NAVIGATION BAR -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-30 no-print">
+    <div class="max-w-md mx-auto grid grid-cols-6 text-center">
+      <button onclick="switchTab('home')" id="nav-home" class="py-2.5 text-emerald-600 font-semibold flex flex-col items-center text-[10px]">
+        <i class="fa-solid fa-chart-line text-sm mb-0.5"></i> Home
+      </button>
+      <button onclick="switchTab('diet')" id="nav-diet" class="py-2.5 text-slate-400 flex flex-col items-center text-[10px]">
+        <i class="fa-solid fa-seedling text-sm mb-0.5"></i> Dieta
+      </button>
+      <button onclick="switchTab('health')" id="nav-health" class="py-2.5 text-slate-400 flex flex-col items-center text-[10px]">
+        <i class="fa-solid fa-stethoscope text-sm mb-0.5"></i> Salute
+      </button>
+      <button onclick="switchTab('training')" id="nav-training" class="py-2.5 text-slate-400 flex flex-col items-center text-[10px]">
+        <i class="fa-solid fa-graduation-cap text-sm mb-0.5"></i> Training
+      </button>
+      <button onclick="switchTab('safety')" id="nav-safety" class="py-2.5 text-slate-400 flex flex-col items-center text-[10px]">
+        <i class="fa-solid fa-shield-heart text-sm mb-0.5"></i> Guida/SOS
+      </button>
+      <button onclick="switchTab('admin')" id="nav-admin" class="py-2.5 text-slate-400 flex flex-col items-center text-[10px]">
+        <i class="fa-solid fa-rotate text-sm mb-0.5"></i> Family Sync
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    // =========================================================================
+    // 🔧 SETUP DELLO SVILUPPATORE (INCOLLA QUI UNA VOLTA PRIMA DI GITHUB PAGES!)
+    // =========================================================================
+    const BACKEND_URL = "https://jsllqvqhivxraptnmsai.supabase.co/"; // es: "https://xyzcompany.supabase.co"
+    const BACKEND_ANON_KEY = "sb_publishable_aLyx8zVOWb5dNO3oC3EsXQ_IX1eF6bu"; // es: "eyJhbGciOi..."
+
+    const QUICK_TASKS = [
+      { id: 'water', label: 'Acqua Fresca', icon: 'fa-droplet', warnDays: 1 },
+      { id: 'cage_tray', label: 'Pulizia Fondo', icon: 'fa-broom', warnDays: 2 },
+      { id: 'cage_deep', label: 'Disinfezione Gabbia', icon: 'fa-soap', warnDays: 14 },
+      { id: 'toys', label: 'Rotazione Giochi', icon: 'fa-puzzle-piece', warnDays: 10 },
+      { id: 'bath', label: 'Bagnetto / Doccia', icon: 'fa-shower', warnDays: 4 },
+      { id: 'uvb', label: 'Cambio Lampada UVB', icon: 'fa-sun', warnDays: 180 }
+    ];
+
+    const FIRST_AID_ITEMS = [
+      { id: 'fa_hemo', label: 'Polvere emostatica / Amido di mais (unghie/calami)' },
+      { id: 'fa_saline', label: 'Soluzione fisiologica sterile (lavaggio occhi/ferite)' },
+      { id: 'fa_heat', label: 'Lampada ceramica / Tappetino per Camera Calda (28-30°C)' },
+      { id: 'fa_syringe', label: 'Siringhe senz’ago (1ml / 5ml per liquidi o terapie)' },
+      { id: 'fa_carrier', label: 'Trasportino rigido pronto all’uso + asciugamano' },
+      { id: 'fa_f10', label: 'Disinfettante veterinario (es. F10) e garze sterili (no cotone!)' }
+    ];
+
+    const INFECTIOUS_TESTS = [
+      { id: 'pbfd', label: 'PBFD (Circovirus)' },
+      { id: 'polyoma', label: 'Polyomavirus (APV)' },
+      { id: 'chlamydia', label: 'Clamidia / Psittacosi' },
+      { id: 'pdd', label: 'Bornavirus (PDD)' },
+      { id: 'dna_sex', label: 'Sessaggio DNA' },
+      { id: 'fecal', label: 'Esame Coprologico' }
+    ];
+
+    const CAGE_SPECS_BY_SIZE = {
+      xs: { minBar: 10, maxBar: 12.5, minW: 60, minD: 40, label: 'Micro/Piccola' },
+      sm: { minBar: 12, maxBar: 16.5, minW: 75, minD: 50, label: 'Medio-Piccola' },
+      md: { minBar: 18, maxBar: 25.5, minW: 90, minD: 65, label: 'Media' },
+      lg: { minBar: 25, maxBar: 38,   minW: 120, minD: 90, label: 'Grande' }
+    };
+
+    const formatLocalDate = (d) => {
+      const yr = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, '0');
+      const da = String(d.getDate()).padStart(2, '0');
+      return `${yr}-${mo}-${da}`;
+    };
+    const parseLocalDateStart = (ymd) => new Date(`${ymd}T00:00:00`);
+    const todayStr = () => formatLocalDate(new Date());
+    const daysAgoLocalDate = (d) => formatLocalDate(new Date(Date.now() - d * 86400000));
+    const daysAgoISO = (d) => new Date(Date.now() - d * 86400000).toISOString();
+
+    function getFlightDayKey(resetTimeStr = '00:00', refDate = new Date()) {
+      const [rH, rM] = (resetTimeStr || '00:00').split(':').map(Number);
+      const d = new Date(refDate.getTime());
+      const curMins = d.getHours() * 60 + d.getMinutes();
+      const resetMins = (isNaN(rH) ? 0 : rH) * 60 + (isNaN(rM) ? 0 : rM);
+      if (curMins < resetMins) {
+        d.setDate(d.getDate() - 1);
+      }
+      return formatLocalDate(d);
+    }
+
+    function escapeHtml(str = '') {
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function deepClone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function triggerSafePrint() {
+      requestAnimationFrame(() => setTimeout(() => window.print(), 60));
+    }
+
+    function getMyFamilyRoom() {
+      return localStorage.getItem('avianCareRoomCode') || '';
+    }
+    function setMyFamilyRoom(code) {
+      if (!code) localStorage.removeItem('avianCareRoomCode');
+      else localStorage.setItem('avianCareRoomCode', code.toUpperCase().trim());
+    }
+    function isBackendReady() {
+      return BACKEND_URL.startsWith('https://') && !BACKEND_ANON_KEY.includes('INCOLLA_QUI');
+    }
+
+    // =========================================================================
+    // ARCHIVIO PDF LOCALE (INDEXEDDB) PER CITES E REFERTI VETERINARI
+    // =========================================================================
+    let pdfDbPromise = null;
+    let activeViewerObjectUrl = null;
+
+    function getPdfDb() {
+      if (pdfDbPromise) return pdfDbPromise;
+      pdfDbPromise = new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) {
+          reject(new Error('IndexedDB non supportato'));
+          return;
+        }
+        const req = indexedDB.open('AvianCarePdfStore', 1);
+        req.onupgradeneeded = () => {
+          if (!req.result.objectStoreNames.contains('pdfs')) {
+            req.result.createObjectStore('pdfs', { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      return pdfDbPromise;
+    }
+
+    async function savePdfToStore(id, fileName, dataUrl) {
+      const db = await getPdfDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('pdfs', 'readwrite');
+        tx.objectStore('pdfs').put({ id, fileName, dataUrl, savedAt: Date.now() });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function getPdfFromStore(id) {
+      if (!id) return null;
+      const db = await getPdfDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('pdfs', 'readonly');
+        const req = tx.objectStore('pdfs').get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function deletePdfFromStore(id) {
+      if (!id) return;
+      try {
+        const db = await getPdfDb();
+        const tx = db.transaction('pdfs', 'readwrite');
+        tx.objectStore('pdfs').delete(id);
+      } catch (e) {}
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function dataUrlToBlobUrl(dataUrl) {
+      try {
+        const [header, base64] = dataUrl.split(',');
+        const mimeMatch = header.match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+        const bin = atob(base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return URL.createObjectURL(new Blob([bytes], { type: mime }));
+      } catch {
+        return dataUrl;
+      }
+    }
+
+    // Compressione foto profilo quadrata (160x160px)
+    function compressAvatarImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            const size = 160;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const minSide = Math.min(img.width, img.height);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+            resolve(canvas.toDataURL('image/jpeg', 0.72));
+          };
+          img.onerror = reject;
+          img.src = ev.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderAvatarHtml(parrot, sizeClass = 'w-6 h-6', textClass = 'text-[10px]') {
+      if (parrot && parrot.avatar) {
+        return `<img src="${parrot.avatar}" alt="${escapeHtml(parrot.name)}" class="${sizeClass} rounded-full object-cover border border-emerald-200 shrink-0 bg-white">`;
+      }
+      const initial = (parrot && parrot.name ? parrot.name.trim()[0].toUpperCase() : '?');
+      return `<span class="${sizeClass} rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold ${textClass} inline-flex items-center justify-center shrink-0">${escapeHtml(initial)}</span>`;
+    }
+
+    const defaultState = {
+      activeId: 'p1',
+      lastUpdatedTs: Date.now(),
+      chopBatches: 6,
+      chopPortionGrams: 35,
+      chopAlertThreshold: 2,
+      pantry: [
+        { id: 'pan1', name: 'Estrusi Mantenimento', category: 'Estrusi', grams: 380, daily: 10, expiry: '2027-04-15' },
+        { id: 'pan2', name: 'Mix Premi Noci/Semi', category: 'Mix Semi / Premi', grams: 90, daily: 3, expiry: '2027-02-10' }
+      ],
+      firstAidChecked: { fa_hemo: true, fa_saline: true, fa_carrier: true },
+      reminders: [
+        { id: 'rem1', title: '⚖️ Pesare il pappagallo a digiuno', time: '08:00', mode: 'alarm', soundStyle: 'chime', enabled: true, lastFiredDate: '' },
+        { id: 'rem2', title: '🌙 Mettere a letto (Copertura/Buio)', time: '20:30', mode: 'push', soundStyle: 'chime', enabled: true, lastFiredDate: '' }
+      ],
+      parrots: [{
+        id: 'p1',
+        avatar: '',
+        name: 'Kiwi',
+        species: 'Conuro del Sole',
+        ring: 'IT-FOI-24-8841',
+        vet: 'Clinica Aviaria Dott.ssa Verdi - 333 1234567',
+        sounds: 'Fischio doppia nota, risponde a "Kiwi vieni!"',
+        ownerName: '',
+        ownerPhone: '',
+        social: '',
+        bedtime: '20:30',
+        flightMinTarget: 120,
+        flightResetTime: '00:00',
+        conversionPct: 75,
+        cites: { pdfId: '', pdfName: '' },
+        cageSetup: { sizeClass: 'sm', barSpacing: 15, width: 85, depth: 55, height: 95, naturalPerches: true },
+        medications: [],
+        vetExamsPdf: [],
+        infectiousTests: { pbfd: 'Negativo ✅', chlamydia: 'Negativo ✅', dna_sex: 'Maschio ♂️' },
+        lastCheckupDate: daysAgoLocalDate(120),
+        objectPrefs: [
+          { id: 'op1', type: 'like', name: 'Pinoli & rametti di ulivo' },
+          { id: 'op2', type: 'dislike', name: 'Scopa / aspirapolvere accesa' }
+        ],
+        weights: [
+          { date: daysAgoLocalDate(5), grams: 112 },
+          { date: daysAgoLocalDate(4), grams: 111.5 },
+          { date: daysAgoLocalDate(3), grams: 112.2 },
+          { date: daysAgoLocalDate(2), grams: 111.8 },
+          { date: daysAgoLocalDate(1), grams: 111.0 }
+        ],
+        tasks: {
+          water: daysAgoISO(0),
+          cage_tray: daysAgoISO(1),
+          cage_deep: daysAgoISO(12),
+          toys: daysAgoISO(11),
+          bath: daysAgoISO(2),
+          uvb: daysAgoISO(45)
+        },
+        dietLogs: [
+          { ts: daysAgoISO(0), type: 'Estrusi', offered: 10, eaten: 8, notes: 'Ottimo appetito al mattino' },
+          { ts: daysAgoISO(1), type: 'Chop Verdure Fresche', offered: 30, eaten: 22, notes: '' }
+        ],
+        healthLogs: [
+          { ts: daysAgoISO(0), droppings: 'Normali', urates: 'Bianchi / Crema', notes: 'Feci ben formate' }
+        ],
+        tricks: [
+          { id: 't1', name: 'Step-Up sul dito', treat: 'Pinolo', level: 2 },
+          { id: 't2', name: 'Entrata spontanea trasportino', treat: 'Mandorla', level: 1 }
+        ],
+        flightLogs: [{ date: todayStr(), mins: 95 }],
+        photos: []
+      }]
+    };
+
+    function normalizeState(parsed) {
+      if (!parsed || typeof parsed !== 'object') return deepClone(defaultState);
+      parsed.lastUpdatedTs = parsed.lastUpdatedTs || 0;
+      parsed.chopBatches = parsed.chopBatches ?? 6;
+      parsed.chopPortionGrams = parsed.chopPortionGrams ?? 35;
+      parsed.chopAlertThreshold = parsed.chopAlertThreshold ?? 2;
+      parsed.pantry = Array.isArray(parsed.pantry) ? parsed.pantry : deepClone(defaultState.pantry);
+      parsed.firstAidChecked = parsed.firstAidChecked || {};
+      parsed.reminders = (Array.isArray(parsed.reminders) ? parsed.reminders : deepClone(defaultState.reminders)).map(r => ({ soundStyle: 'chime', ...r }));
+
+      const rawParrots = Array.isArray(parsed.parrots) && parsed.parrots.length ? parsed.parrots : deepClone(defaultState.parrots);
+      parsed.parrots = rawParrots.map(p => {
+        const mergedWeights = Array.isArray(p.weights)
+          ? [...p.weights].sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+          : [];
+        const migratedDiet = (Array.isArray(p.dietLogs) ? p.dietLogs : []).map(d => {
+          if (typeof d.eaten === 'number') return d;
+          const pct = d.pct ?? 75;
+          return { ...d, eaten: +(((d.offered || 0) * pct) / 100).toFixed(1) };
+        });
+        return {
+          ...p,
+          avatar: p.avatar || '',
+          vet: p.vet || '',
+          sounds: p.sounds || '',
+          ownerName: p.ownerName || '',
+          ownerPhone: p.ownerPhone || '',
+          social: p.social || '',
+          bedtime: p.bedtime || '20:30',
+          flightMinTarget: p.flightMinTarget || 120,
+          flightResetTime: p.flightResetTime || '00:00',
+          conversionPct: p.conversionPct ?? 70,
+          cites: { pdfId: '', pdfName: '', ...(p.cites || {}) },
+          cageSetup: p.cageSetup || null,
+          medications: Array.isArray(p.medications) ? p.medications : [],
+          vetExamsPdf: Array.isArray(p.vetExamsPdf) ? p.vetExamsPdf : [],
+          infectiousTests: p.infectiousTests || {},
+          lastCheckupDate: p.lastCheckupDate || '',
+          objectPrefs: Array.isArray(p.objectPrefs) ? p.objectPrefs : [],
+          tricks: Array.isArray(p.tricks) ? p.tricks : [{ id: 't1', name: 'Step-Up', treat: 'Pinolo', level: 0 }],
+          flightLogs: Array.isArray(p.flightLogs) ? p.flightLogs : [],
+          photos: Array.isArray(p.photos) ? p.photos : [],
+          weights: mergedWeights,
+          tasks: p.tasks || {},
+          dietLogs: migratedDiet,
+          healthLogs: Array.isArray(p.healthLogs) ? p.healthLogs : []
+        };
+      });
+
+      if (!parsed.parrots.some(p => p.id === parsed.activeId)) {
+        parsed.activeId = parsed.parrots[0].id;
+      }
+      return parsed;
+    }
+
+    function loadAndMigrateState() {
+      try {
+        const raw = localStorage.getItem('avianCareState');
+        if (!raw) return normalizeState(deepClone(defaultState));
+        return normalizeState(JSON.parse(raw));
+      } catch {
+        return normalizeState(deepClone(defaultState));
+      }
+    }
+
+    let state = loadAndMigrateState();
+    let chartInstance = null;
+    let flightTimerStart = null;
+    let flightTimerParrotId = null;
+    let flightTimerDayKey = '';
+    let flightTimerTickInterval = null;
+    let flightPeriod = 'week';
+    let lastPhotoCompareParrotId = '';
+    let pendingAvatarDataUrl = null;
+    let audioCtx = null;
+    let alarmBeepInterval = null;
+    let currentRingingReminder = null;
+    let isSyncingNow = false;
+
+    function restorePersistedFlightTimer() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('avianCareActiveFlightTimer') || 'null');
+        if (saved && saved.start && saved.parrotId && state.parrots.some(p => p.id === saved.parrotId)) {
+          const p = state.parrots.find(x => x.id === saved.parrotId);
+          flightTimerStart = saved.start;
+          flightTimerParrotId = saved.parrotId;
+          flightTimerDayKey = saved.dayKey || getFlightDayKey(p.flightResetTime || '00:00', new Date(saved.start));
+          startFlightTimerTicker();
+        }
+      } catch {}
+    }
+
+    function persistFlightTimerState() {
+      if (flightTimerStart && flightTimerParrotId) {
+        localStorage.setItem('avianCareActiveFlightTimer', JSON.stringify({
+          start: flightTimerStart,
+          parrotId: flightTimerParrotId,
+          dayKey: flightTimerDayKey
+        }));
+      } else {
+        localStorage.removeItem('avianCareActiveFlightTimer');
+      }
+    }
+
+    function getCurrentParrot() {
+      return state.parrots.find(p => p.id === state.activeId) || state.parrots[0];
+    }
+
+    function getLatestWeightGrams(parrot) {
+      return parrot.weights.length ? parrot.weights[parrot.weights.length - 1].grams : 100;
+    }
+
+    // =========================================================================
+    // SISTEMA CLOUD UNIVERSALE ZERO-CONFIGURAZIONE
+    // =========================================================================
+    function generateSecretRoomCode() {
+      const prefixes = ['ARA', 'KIWI', 'RIO', 'COCO', 'LORI'];
+      const pref = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const seg = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      return `${pref}-${seg(4)}-${seg(4)}`;
+    }
+
+    function setHeaderSyncStatus(mode) {
+      const badge = document.getElementById('headerCloudBadge');
+      if (!badge) return;
+      if (mode === 'syncing') {
+        badge.className = 'text-[10px] bg-amber-400 text-slate-950 font-bold px-2 py-0.5 rounded-full flex items-center gap-1';
+        badge.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Sync';
+      } else if (mode === 'live') {
+        badge.className = 'text-[10px] bg-emerald-400 text-emerald-950 font-bold px-2 py-0.5 rounded-full flex items-center gap-1';
+        badge.innerHTML = '<i class="fa-solid fa-cloud"></i> Sync Attivo';
+      } else if (mode === 'error') {
+        badge.className = 'text-[10px] bg-rose-500 text-white font-bold px-2 py-0.5 rounded-full flex items-center gap-1';
+        badge.innerHTML = '<i class="fa-solid fa-wifi"></i> Offline';
+      } else {
+        badge.className = 'text-[10px] bg-emerald-900/80 border border-emerald-500/50 px-2 py-0.5 rounded-full flex items-center gap-1';
+        badge.innerHTML = '<i class="fa-solid fa-cloud"></i> Attiva Sync';
+      }
+    }
+
+    function saveState(skipCloudPush = false) {
+      state.lastUpdatedTs = Date.now();
+      try {
+        localStorage.setItem('avianCareState', JSON.stringify(state));
+      } catch {
+        alert("Memoria locale piena. Rimuovi qualche foto vecchia dalla galleria o scarica un backup JSON.");
+      }
+      renderAll();
+      if (!skipCloudPush && getMyFamilyRoom() && isBackendReady()) {
+        autoPushCloud();
+      }
+    }
+
+    async function autoPushCloud() {
+      const room = getMyFamilyRoom();
+      if (!room || !isBackendReady()) return;
+      setHeaderSyncStatus('syncing');
+      try {
+        const res = await fetch(`${BACKEND_URL.replace(/\/$/, '')}/rest/v1/avian_sync`, {
+          method: 'POST',
+          headers: {
+            'apikey': BACKEND_ANON_KEY,
+            'Authorization': `Bearer ${BACKEND_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({ room_id: room, payload: state, updated_at: new Date().toISOString() })
+        });
+        if (!res.ok) throw new Error();
+        setHeaderSyncStatus('live');
+      } catch {
+        setHeaderSyncStatus('error');
+      }
+    }
+
+    async function autoPullCloud(forceApply = false) {
+      const room = getMyFamilyRoom();
+      if (!room || !isBackendReady() || isSyncingNow) return false;
+      isSyncingNow = true;
+      try {
+        const res = await fetch(`${BACKEND_URL.replace(/\/$/, '')}/rest/v1/avian_sync?room_id=eq.${encodeURIComponent(room)}&select=payload,updated_at`, {
+          headers: { 'apikey': BACKEND_ANON_KEY, 'Authorization': `Bearer ${BACKEND_ANON_KEY}` }
+        });
+        if (!res.ok) throw new Error();
+        const rows = await res.json();
+        setHeaderSyncStatus('live');
+        if (!rows.length || !rows[0].payload) { isSyncingNow = false; return false; }
+
+        const remote = normalizeState(rows[0].payload);
+        if (forceApply || (remote.lastUpdatedTs || 0) > (state.lastUpdatedTs || 0)) {
+          const keepSelected = state.activeId;
+          state = remote;
+          if (state.parrots.some(p => p.id === keepSelected)) state.activeId = keepSelected;
+          localStorage.setItem('avianCareState', JSON.stringify(state));
+          renderAll();
+        }
+        isSyncingNow = false;
+        return true;
+      } catch {
+        setHeaderSyncStatus('error');
+        isSyncingNow = false;
+        return false;
+      }
+    }
+
+    async function createOneClickFamilyRoom() {
+      if (!isBackendReady()) {
+        alert("Nota per lo sviluppatore: inserisci prima BACKEND_URL e BACKEND_ANON_KEY di Supabase alle righe di configurazione del file index.html prima di pubblicarlo su GitHub!");
+        return;
+      }
+      const newRoom = generateSecretRoomCode();
+      setMyFamilyRoom(newRoom);
+      renderAll();
+      await autoPushCloud();
+      openFamilyInviteQRModal();
+    }
+
+    async function joinExistingRoomByCode(e) {
+      e.preventDefault();
+      if (!isBackendReady()) {
+        alert("Backend cloud non ancora configurato dallo sviluppatore.");
+        return;
+      }
+      const code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
+      if (!code) return;
+      setMyFamilyRoom(code);
+      const found = await autoPullCloud(true);
+      if (!found) {
+        setMyFamilyRoom('');
+        renderAll();
+        alert("Codice Famiglia non trovato. Verifica di averlo scritto correttamente (es. ARA-4829-X7K2).");
+        return;
+      }
+      document.getElementById('joinRoomCodeInput').value = '';
+      showJoinedToast();
+      switchTab('home');
+    }
+
+    function unlinkDeviceFromRoom() {
+      if (confirm("Vuoi scollegare questo dispositivo dalla sincronizzazione familiare?")) {
+        setMyFamilyRoom('');
+        setHeaderSyncStatus('local');
+        renderAll();
+      }
+    }
+
+    function buildPublicInviteUrl() {
+      const room = getMyFamilyRoom();
+      return `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(room)}`;
+    }
+
+    function openFamilyInviteQRModal() {
+      const room = getMyFamilyRoom();
+      if (!room) return;
+      document.getElementById('modalShortRoomCode').textContent = room;
+      const box = document.getElementById('familyQrCanvasBox');
+      box.innerHTML = '';
+      if (typeof QRCode === 'undefined') {
+        box.innerHTML = '<p class="text-xs text-rose-600 p-2">Connessione internet richiesta per generare il QR Code. Usa il codice qui sotto.</p>';
+      } else {
+        new QRCode(box, { text: buildPublicInviteUrl(), width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+      }
+      const m = document.getElementById('familyInviteQrModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeFamilyInviteQRModal() {
+      const m = document.getElementById('familyInviteQrModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function shareFamilyInviteLink() {
+      const room = getMyFamilyRoom();
+      if (!room) return;
+      const inviteUrl = buildPublicInviteUrl();
+      const text = `Clicca qui per collegare il tuo telefono ai nostri pappagalli su AvianCare (Codice: ${room}): ${inviteUrl}`;
+      if (navigator.share) {
+        navigator.share({ title: 'Invito AvianCare', text: `Collegati ai nostri pappagalli (Codice ${room})`, url: inviteUrl }).catch(() => {});
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      }
+    }
+
+    function showJoinedToast() {
+      const toast = document.getElementById('familyJoinedToast');
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('flex'); }, 7000);
+    }
+
+    // QR CODE GABBIA
+    function openCageQRModal() {
+      const p = getCurrentParrot();
+      document.getElementById('qrModalParrotTitle').textContent = `QR Gabbia: ${p.name}`;
+      const box = document.getElementById('qrCodeCanvasBox');
+      box.innerHTML = '';
+      if (typeof QRCode === 'undefined') {
+        box.innerHTML = '<p class="text-xs text-rose-600 p-2">Connessione internet richiesta per generare il QR Code.</p>';
+      } else {
+        const url = `${window.location.origin}${window.location.pathname}?parrot=${encodeURIComponent(p.id)}`;
+        new QRCode(box, { text: url, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+      }
+      const m = document.getElementById('cageQrModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeCageQRModal() {
+      const m = document.getElementById('cageQrModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function printCageQRTag() {
+      const p = getCurrentParrot();
+      const canvas = document.querySelector('#qrCodeCanvasBox canvas');
+      const img = document.querySelector('#qrCodeCanvasBox img');
+      const qrDataUrl = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+      document.getElementById('printReportArea').innerHTML = `
+        <div class="border-4 border-emerald-700 rounded-2xl p-6 max-w-sm mx-auto text-center space-y-3">
+          <div class="flex items-center justify-center gap-2">
+            ${p.avatar ? `<img src="${p.avatar}" class="w-12 h-12 rounded-full object-cover border">` : ''}
+            <div class="text-left">
+              <div class="text-xl font-extrabold text-emerald-800">${escapeHtml(p.name)}</div>
+              <div class="text-xs text-slate-500">${escapeHtml(p.species)}</div>
+            </div>
+          </div>
+          ${qrDataUrl ? `<img src="${qrDataUrl}" class="w-48 h-48 mx-auto border p-2 rounded-xl">` : ''}
+          ${p.ring ? `<div class="text-xs">Anello / ID: <strong>${escapeHtml(p.ring)}</strong></div>` : ''}
+          ${p.vet ? `<div class="text-xs text-rose-700">Vet: <strong>${escapeHtml(p.vet)}</strong></div>` : ''}
+          <div class="text-[11px] text-slate-400">Inquadra per aprire subito la scheda su AvianCare</div>
+        </div>
+      `;
+      closeCageQRModal();
+      triggerSafePrint();
+    }
+
+    async function initPWAAndAutoSync() {
+      const manifest = {
+        name: "AvianCare Ultimate",
+        short_name: "AvianCare",
+        start_url: ".",
+        display: "standalone",
+        background_color: "#f1f5f9",
+        theme_color: "#047857"
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      document.getElementById('pwaManifestLink').href = URL.createObjectURL(blob);
+
+      restorePersistedFlightTimer();
+
+      const params = new URLSearchParams(window.location.search);
+      const invitedRoom = params.get('room');
+      if (invitedRoom && isBackendReady()) {
+        setMyFamilyRoom(invitedRoom);
+        history.replaceState(null, '', window.location.pathname);
+        await autoPullCloud(true);
+        showJoinedToast();
+      } else if (getMyFamilyRoom() && isBackendReady()) {
+        autoPullCloud(false);
+      }
+
+      const qrParrotId = params.get('parrot');
+      if (qrParrotId && state.parrots.some(p => p.id === qrParrotId)) {
+        state.activeId = qrParrotId;
+        renderAll();
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          autoPullCloud(false);
+          checkFlightDailyReset();
+        }
+      });
+      setInterval(() => {
+        if (document.visibilityState === 'visible') autoPullCloud(false);
+      }, 20000);
+
+      setInterval(() => {
+        checkScheduledReminders();
+        checkFlightDailyReset();
+      }, 15000);
+      checkScheduledReminders();
+    }
+
+    // =========================================================================
+    // SVEGLIE CON SUONI SELEZIONABILI & NOTIFICHE PUSH
+    // =========================================================================
+    const SOUND_PRESET_LABELS = {
+      chime: '🎵 Carillon Dolce',
+      trill: '🔔 Trillo Classico',
+      urgent: '⏰ Doppio Bip Urgente',
+      pulse: '🎶 Impulso Rapido'
+    };
+
+    function playAlarmToneBurst(style = 'chime') {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+
+        const playNote = (freq, startOffset, duration, type = 'sine', vol = 0.25) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(vol, now + startOffset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + startOffset);
+          osc.stop(now + startOffset + duration + 0.02);
+        };
+
+        if (style === 'chime') {
+          playNote(523.25, 0, 0.25, 'sine', 0.24);
+          playNote(659.25, 0.2, 0.25, 'sine', 0.24);
+          playNote(783.99, 0.4, 0.35, 'sine', 0.24);
+        } else if (style === 'trill') {
+          for (let i = 0; i < 6; i++) {
+            playNote(i % 2 === 0 ? 980 : 1240, i * 0.08, 0.07, 'triangle', 0.25);
+          }
+        } else if (style === 'urgent') {
+          playNote(1046.5, 0, 0.16, 'square', 0.18);
+          playNote(1046.5, 0.22, 0.16, 'square', 0.18);
+          playNote(1318.5, 0.44, 0.25, 'square', 0.18);
+        } else {
+          playNote(440, 0, 0.12, 'sawtooth', 0.16);
+          playNote(587.33, 0.14, 0.12, 'sawtooth', 0.16);
+          playNote(880, 0.28, 0.18, 'sawtooth', 0.16);
+        }
+
+        if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+      } catch (e) {}
+    }
+
+    function triggerAlarmOrNotification(rem) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('AvianCare Promemoria', {
+            body: `${rem.title} (${rem.time})`,
+            requireInteraction: rem.mode === 'alarm'
+          });
+        } catch (e) {}
+      }
+      if (rem.mode === 'alarm') {
+        const style = rem.soundStyle || 'chime';
+        currentRingingReminder = rem;
+        document.getElementById('ringingAlarmTitle').textContent = rem.title;
+        document.getElementById('ringingAlarmTime').textContent = `Orario: ${rem.time} • ${SOUND_PRESET_LABELS[style] || ''}`;
+        const ov = document.getElementById('ringingAlarmOverlay');
+        ov.classList.remove('hidden');
+        ov.classList.add('flex');
+        playAlarmToneBurst(style);
+        if (alarmBeepInterval) clearInterval(alarmBeepInterval);
+        alarmBeepInterval = setInterval(() => playAlarmToneBurst(style), 1500);
+      }
+    }
+
+    function stopRingingAlarm(snooze5Min) {
+      if (alarmBeepInterval) { clearInterval(alarmBeepInterval); alarmBeepInterval = null; }
+      const ov = document.getElementById('ringingAlarmOverlay');
+      ov.classList.add('hidden');
+      ov.classList.remove('flex');
+
+      if (snooze5Min && currentRingingReminder) {
+        const snoozeDate = new Date(Date.now() + 5 * 60000);
+        const hh = String(snoozeDate.getHours()).padStart(2, '0');
+        const mm = String(snoozeDate.getMinutes()).padStart(2, '0');
+        state.reminders.push({
+          id: 'snooze_' + Date.now(),
+          title: `${currentRingingReminder.title} (Posposta)`,
+          time: `${hh}:${mm}`,
+          mode: 'alarm',
+          soundStyle: currentRingingReminder.soundStyle || 'chime',
+          enabled: true,
+          oneShot: true,
+          lastFiredDate: ''
+        });
+        saveState();
+      }
+      currentRingingReminder = null;
+    }
+
+    function checkScheduledReminders() {
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const today = todayStr();
+      let changed = false;
+
+      state.reminders.forEach(rem => {
+        if (!rem.enabled) return;
+        if (rem.time === hhmm && rem.lastFiredDate !== today) {
+          rem.lastFiredDate = today;
+          if (rem.oneShot) rem.enabled = false;
+          changed = true;
+          triggerAlarmOrNotification(rem);
+        }
+      });
+      if (changed) saveState(true);
+    }
+
+    function openAlarmsModal() {
+      const m = document.getElementById('alarmsModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+      renderAlarmsModal();
+    }
+
+    function closeAlarmsModal() {
+      const m = document.getElementById('alarmsModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function requestNotificationPerm() {
+      if (!('Notification' in window)) {
+        alert("Usa il tasto '📅 Telefono' accanto alla sveglia per installarla nell'orologio/calendario nativo.");
+        return;
+      }
+      Notification.requestPermission().then(() => renderAlarmsModal());
+    }
+
+    function testSoundAlarm() {
+      const st = document.getElementById('remSoundStyle')?.value || 'chime';
+      triggerAlarmOrNotification({ title: 'Test Sveglia Sonora AvianCare!', time: 'Adesso', mode: 'alarm', soundStyle: st });
+    }
+
+    function syncReminderPreset(val) {
+      const inp = document.getElementById('remCustomTitle');
+      if (val === 'custom') { inp.value = ''; inp.focus(); }
+      else inp.value = val;
+    }
+
+    function addReminderAlarm(e) {
+      e.preventDefault();
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch {}
+      state.reminders.push({
+        id: 'rem' + Date.now(),
+        title: document.getElementById('remCustomTitle').value.trim(),
+        time: document.getElementById('remTime').value,
+        mode: document.getElementById('remMode').value,
+        soundStyle: document.getElementById('remSoundStyle').value,
+        enabled: true,
+        lastFiredDate: ''
+      });
+      saveState();
+      renderAlarmsModal();
+    }
+
+    function toggleReminderEnabled(id) {
+      const r = state.reminders.find(x => x.id === id);
+      if (r) { r.enabled = !r.enabled; r.lastFiredDate = ''; }
+      saveState();
+      renderAlarmsModal();
+    }
+
+    function deleteReminder(id) {
+      state.reminders = state.reminders.filter(x => x.id !== id);
+      saveState();
+      renderAlarmsModal();
+    }
+
+    function downloadNativePhoneAlarmICS(remId) {
+      const rem = state.reminders.find(x => x.id === remId);
+      if (!rem) return;
+      const [hh, mm] = rem.time.split(':');
+      const d = new Date();
+      const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+      const ics = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//AvianCare Ultimate//IT', 'BEGIN:VEVENT',
+        `UID:${rem.id}@aviancare.local`, `DTSTART:${ymd}T${hh}${mm}00`, `DTEND:${ymd}T${hh}${mm}00`,
+        'RRULE:FREQ=DAILY', `SUMMARY:${rem.title}`, 'BEGIN:VALARM', 'TRIGGER:-PT0M', 'ACTION:DISPLAY',
+        `DESCRIPTION:${rem.title}`, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'
+      ].join('\r\n');
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Sveglia_${rem.time.replace(':','')}.ics`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function renderAlarmsModal() {
+      const perm = ('Notification' in window) ? Notification.permission : 'non supportato';
+      document.getElementById('notifPermissionStatus').innerHTML = `Stato Push: <strong>${perm === 'granted' ? '✅ Attive' : (perm === 'denied' ? '⛔ Bloccate' : 'Da attivare')}</strong>`;
+
+      const list = document.getElementById('alarmsListContainer');
+      const sorted = [...state.reminders].sort((a, b) => a.time.localeCompare(b.time));
+      list.innerHTML = sorted.length ? sorted.map(r => `
+        <div class="p-2.5 rounded-xl border ${r.enabled ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-200 opacity-60'} flex justify-between items-center gap-2">
+          <div class="overflow-hidden">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-extrabold text-sm text-emerald-800">${r.time}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${r.mode === 'alarm' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700'}">
+                ${r.mode === 'alarm' ? '🚨 Sveglia' : '🔔 Push'}
+              </span>
+              <span class="text-[10px] text-slate-500">${SOUND_PRESET_LABELS[r.soundStyle || 'chime'] || ''}</span>
+            </div>
+            <div class="font-semibold text-slate-700 truncate">${escapeHtml(r.title)}</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="downloadNativePhoneAlarmICS('${r.id}')" class="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-1 rounded-lg font-semibold text-[10px]">
+              📅 Telefono
+            </button>
+            <input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleReminderEnabled('${r.id}')" class="w-4 h-4 accent-emerald-600">
+            <button onclick="deleteReminder('${r.id}')" class="text-slate-400 hover:text-rose-600 px-1"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('') : '<p class="text-slate-400">Nessuna sveglia impostata.</p>';
+    }
+
+    // =========================================================================
+    // MINI SCHEDA PAPPAGALLO AL CLICK SULLA FOTO PROFILO & VISUALIZZATORE MEDIA
+    // =========================================================================
+    function openParrotQuickCard(parrotId) {
+      state.activeId = parrotId;
+      saveState(true);
+      const p = getCurrentParrot();
+      document.getElementById('quickCardAvatar').innerHTML = p.avatar
+        ? `<img src="${p.avatar}" class="w-full h-full object-cover">`
+        : `<span class="text-2xl font-extrabold text-emerald-700">${escapeHtml((p.name || '?')[0].toUpperCase())}</span>`;
+      document.getElementById('quickCardName').textContent = p.name;
+      document.getElementById('quickCardSpecies').textContent = p.species;
+      const lastW = p.weights.length ? `${p.weights[p.weights.length - 1].grams} g` : '--';
+      const citesPdfText = p.cites?.pdfName ? `📄 ${escapeHtml(p.cites.pdfName)}` : 'Nessun PDF CITES caricato';
+      const likes = (p.objectPrefs || []).filter(o => o.type === 'like').map(o => o.name).join(', ');
+      const dislikes = (p.objectPrefs || []).filter(o => o.type === 'dislike').map(o => o.name).join(', ');
+
+      document.getElementById('quickCardDetails').innerHTML = `
+        <div><strong>Peso recente:</strong> ${lastW}</div>
+        ${p.ring ? `<div><strong>Anello / ID:</strong> ${escapeHtml(p.ring)}</div>` : ''}
+        ${p.vet ? `<div><strong>Veterinario:</strong> ${escapeHtml(p.vet)}</div>` : ''}
+        ${p.ownerName ? `<div><strong>Proprietario:</strong> ${escapeHtml(p.ownerName)}</div>` : ''}
+        ${p.ownerPhone ? `<div><strong>Telefono / Città:</strong> ${escapeHtml(p.ownerPhone)}</div>` : ''}
+        ${p.social ? `<div><strong>Social:</strong> ${escapeHtml(p.social)}</div>` : ''}
+        <div><strong>Nanna (12h):</strong> ${p.bedtime || '20:30'} → ${computeWakeTimeFromBedtime(p.bedtime)}</div>
+        ${likes ? `<div><strong>💚 Piace:</strong> ${escapeHtml(likes)}</div>` : ''}
+        ${dislikes ? `<div><strong>⚡ Non piace / Spaventa:</strong> ${escapeHtml(dislikes)}</div>` : ''}
+        <div class="text-emerald-800 font-semibold pt-1 border-t border-slate-200">${citesPdfText}</div>
+      `;
+      const m = document.getElementById('parrotQuickCardModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeParrotQuickCard() {
+      const m = document.getElementById('parrotQuickCardModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    async function openPdfInViewer(pdfId, title) {
+      if (!pdfId) {
+        alert("Nessun PDF salvato per questa voce.");
+        return;
+      }
+      let docRec = null;
+      try {
+        docRec = await getPdfFromStore(pdfId);
+      } catch {
+        alert("Impossibile accedere all'archivio PDF locale di questo browser.");
+        return;
+      }
+      if (!docRec || !docRec.dataUrl) {
+        alert("PDF non trovato su questo dispositivo (i file PDF restano salvati in IndexedDB sul browser in cui li hai caricati).");
+        return;
+      }
+      if (activeViewerObjectUrl) {
+        URL.revokeObjectURL(activeViewerObjectUrl);
+        activeViewerObjectUrl = null;
+      }
+      const viewUrl = dataUrlToBlobUrl(docRec.dataUrl);
+      if (viewUrl.startsWith('blob:')) activeViewerObjectUrl = viewUrl;
+
+      document.getElementById('mediaViewerTitle').textContent = title || docRec.fileName;
+      document.getElementById('mediaViewerBody').innerHTML = `
+        <div class="w-full space-y-2 text-center">
+          <iframe src="${viewUrl}" class="w-full h-80 rounded-lg border bg-white"></iframe>
+          <div class="flex gap-2 justify-center flex-wrap">
+            <a href="${viewUrl}" target="_blank" rel="noopener" class="inline-block bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold">
+              <i class="fa-solid fa-up-right-from-square mr-1"></i> Apri a schermo intero
+            </a>
+            <a href="${viewUrl}" download="${escapeHtml(docRec.fileName || 'documento.pdf')}" class="inline-block bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold">
+              <i class="fa-solid fa-download mr-1"></i> Scarica PDF
+            </a>
+          </div>
+        </div>
+      `;
+      const m = document.getElementById('mediaViewerModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function openVetExamPdfById(docId) {
+      const p = getCurrentParrot();
+      const doc = (p.vetExamsPdf || []).find(d => d.id === docId);
+      if (!doc) return;
+      openPdfInViewer(doc.pdfId, doc.title);
+    }
+
+    function openPhotoById(photoId) {
+      const p = getCurrentParrot();
+      const ph = (p.photos || []).find(item => item.id === photoId);
+      if (!ph) return;
+      document.getElementById('mediaViewerTitle').textContent = `${ph.zone} (${ph.date})${ph.caption ? ' • ' + ph.caption : ''}`;
+      document.getElementById('mediaViewerBody').innerHTML = `<img src="${ph.dataUrl}" class="max-h-96 max-w-full rounded-xl object-contain">`;
+      const m = document.getElementById('mediaViewerModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeMediaViewer() {
+      const m = document.getElementById('mediaViewerModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+      document.getElementById('mediaViewerBody').innerHTML = '';
+      if (activeViewerObjectUrl) {
+        URL.revokeObjectURL(activeViewerObjectUrl);
+        activeViewerObjectUrl = null;
+      }
+    }
+
+    function viewCurrentParrotCitesPdf() {
+      const p = getCurrentParrot();
+      openPdfInViewer(p.cites?.pdfId, `CITES - ${p.name}`);
+    }
+
+    // =========================================================================
+    // DIETA (GRAMMI MANGIATI, DIFFERENZA, MEDIA PELLET & CHOP CON PESO/ALERT)
+    // =========================================================================
+    function logDiet(e) {
+      e.preventDefault();
+      const p = getCurrentParrot();
+      const type = document.getElementById('foodType').value;
+      const offered = parseFloat(document.getElementById('foodOffered').value);
+      const eaten = parseFloat(document.getElementById('foodEatenGrams').value);
+      if (isNaN(offered) || isNaN(eaten) || offered < 0 || eaten < 0) return;
+      if (eaten > offered) {
+        alert("I grammi mangiati non possono superare i grammi dati. Controlla i valori inseriti.");
+        return;
+      }
+
+      p.dietLogs.unshift({
+        ts: new Date().toISOString(),
+        type,
+        offered,
+        eaten,
+        notes: document.getElementById('foodNotes').value.trim()
+      });
+
+      if (document.getElementById('deductFromPantry').checked) {
+        const match = state.pantry.find(item => item.category === type);
+        if (match) match.grams = Math.max(0, +(match.grams - offered).toFixed(1));
+      }
+
+      document.getElementById('foodOffered').value = '';
+      document.getElementById('foodEatenGrams').value = '';
+      document.getElementById('foodNotes').value = '';
+      saveState();
+    }
+
+    function renderDietStats(parrot) {
+      const logs = parrot.dietLogs || [];
+      const pelletLogs = logs.filter(d => d.type === 'Estrusi');
+
+      const pelletByDay = {};
+      pelletLogs.forEach(d => {
+        const day = formatLocalDate(new Date(d.ts));
+        pelletByDay[day] = (pelletByDay[day] || 0) + (d.eaten || 0);
+      });
+      const pelletDays = Object.values(pelletByDay);
+      const avgPelletDaily = pelletDays.length
+        ? (pelletDays.reduce((a, b) => a + b, 0) / pelletDays.length).toFixed(1)
+        : '--';
+
+      const allByDay = {};
+      logs.forEach(d => {
+        const day = formatLocalDate(new Date(d.ts));
+        allByDay[day] = (allByDay[day] || 0) + (d.eaten || 0);
+      });
+      const allDays = Object.values(allByDay);
+      const avgAllDaily = allDays.length
+        ? (allDays.reduce((a, b) => a + b, 0) / allDays.length).toFixed(1)
+        : '--';
+
+      document.getElementById('pelletAvgBadge').textContent = `Media pellet/dì: ${avgPelletDaily === '--' ? '--g' : avgPelletDaily + 'g'}`;
+      document.getElementById('dietDailyStatsBox').innerHTML = `
+        <div><span class="text-slate-500 block text-[11px]">Media giornaliera Pellet</span><strong class="text-sm text-emerald-700">${avgPelletDaily === '--' ? '--' : avgPelletDaily + ' g/dì'}</strong></div>
+        <div><span class="text-slate-500 block text-[11px]">Media mangiata totale/dì</span><strong class="text-sm text-slate-800">${avgAllDaily === '--' ? '--' : avgAllDaily + ' g/dì'}</strong></div>
+      `;
+    }
+
+    function updateChopBatch(delta) {
+      state.chopBatches = Math.max(0, (state.chopBatches || 0) + delta);
+      saveState();
+    }
+
+    function saveChopSettings() {
+      const pGrams = parseFloat(document.getElementById('chopPortionGramsInput').value);
+      const thresh = parseInt(document.getElementById('chopAlertThresholdInput').value);
+      if (!isNaN(pGrams) && pGrams > 0) state.chopPortionGrams = pGrams;
+      if (!isNaN(thresh) && thresh >= 1) state.chopAlertThreshold = thresh;
+      saveState();
+    }
+
+    function renderChopSection() {
+      const batches = state.chopBatches ?? 0;
+      const pGrams = state.chopPortionGrams ?? 35;
+      const thresh = state.chopAlertThreshold ?? 2;
+
+      document.getElementById('chopCountBadge').textContent = batches;
+      document.getElementById('chopPortionGramsInput').value = pGrams;
+      document.getElementById('chopAlertThresholdInput').value = thresh;
+      document.getElementById('chopTotalGramsSubtitle').textContent = `Porzioni da ${pGrams}g • Totale in freezer: ${batches * pGrams}g`;
+
+      const alertBox = document.getElementById('chopLowAlertBox');
+      if (batches < thresh) {
+        alertBox.classList.remove('hidden');
+        alertBox.textContent = `⚠️ Alert Scorta Chop: hai solo ${batches} porzioni in freezer (soglia impostata: sotto ${thresh})!`;
+      } else {
+        alertBox.classList.add('hidden');
+      }
+    }
+
+    function previewConversion(val) {
+      const v = parseInt(val, 10) || 0;
+      document.getElementById('conversionPctLabel').textContent = `${v}% Sano / ${100 - v}% Semi`;
+    }
+
+    function updateConversion(val) {
+      getCurrentParrot().conversionPct = parseInt(val, 10) || 0;
+      saveState();
+    }
+
+    // =========================================================================
+    // SALUTE (NANNA 12H, TERAPIE CON SVEGLIA, PDF ESAMI, CHECK FECI & FOTO)
+    // =========================================================================
+    function saveBedtime(val) {
+      if (!val) return;
+      getCurrentParrot().bedtime = val;
+      saveState();
+    }
+
+    function computeWakeTimeFromBedtime(bedtimeStr) {
+      const [hh, mm] = (bedtimeStr || '20:30').split(':').map(Number);
+      const wakeHour = (hh + 12) % 24;
+      return `${String(wakeHour).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+
+    function renderBedtimeSection(parrot) {
+      const bt = parrot.bedtime || '20:30';
+      document.getElementById('bedtimeInput').value = bt;
+      document.getElementById('sleepWindowSummary').textContent = `12h indicativi: ${bt} → ${computeWakeTimeFromBedtime(bt)}`;
+    }
+
+    function previewMedCalc() {
+      const p = getCurrentParrot();
+      const wGrams = getLatestWeightGrams(p);
+      const mgKg = parseFloat(document.getElementById('medMgKg').value);
+      const conc = parseFloat(document.getElementById('medConc').value);
+      const box = document.getElementById('medCalcPreview');
+      if (mgKg > 0 && conc > 0) {
+        const ml = ((wGrams / 1000) * mgKg) / conc;
+        box.innerHTML = `⚖️ Peso attuale di <strong>${escapeHtml(p.name)}</strong>: <strong>${wGrams}g</strong> → Dose esatta: <strong class="text-sm underline">${ml.toFixed(3)} ml</strong> (${(ml * 100).toFixed(1)} unità su siringa insulina 1ml).`;
+      } else {
+        box.textContent = 'Inserisci mg/kg e mg/ml prescritti dal Veterinario per calcolare i ml esatti sul peso attuale.';
+      }
+    }
+
+    function addMedication(e) {
+      e.preventDefault();
+      const p = getCurrentParrot();
+      const medTitle = document.getElementById('medName').value.trim();
+      const mgKg = parseFloat(document.getElementById('medMgKg').value);
+      const conc = parseFloat(document.getElementById('medConc').value);
+      const days = parseInt(document.getElementById('medDays').value, 10);
+      if (!medTitle || !(mgKg > 0) || !(conc > 0) || !(days > 0)) {
+        alert("Inserisci valori numerici positivi validi per dose, concentrazione e durata.");
+        return;
+      }
+
+      const alarmTime = document.getElementById('medAlarmTime').value;
+      const alarmMode = document.getElementById('medAlarmMode').value;
+      const soundStyle = document.getElementById('medSoundStyle')?.value || 'chime';
+
+      let linkedReminderId = '';
+      if (alarmMode !== 'none' && alarmTime) {
+        linkedReminderId = 'med_rem_' + Date.now();
+        state.reminders.push({
+          id: linkedReminderId,
+          title: `💊 Terapia ${p.name}: ${medTitle}`,
+          time: alarmTime,
+          mode: alarmMode,
+          soundStyle,
+          enabled: true,
+          lastFiredDate: ''
+        });
+      }
+
+      p.medications.unshift({
+        id: 'med' + Date.now(),
+        name: medTitle,
+        mgKg,
+        conc,
+        freq: parseInt(document.getElementById('medFreq').value, 10) || 1,
+        days,
+        alarmTime,
+        alarmMode,
+        soundStyle,
+        linkedReminderId,
+        startDate: todayStr(),
+        dosesTaken: {}
+      });
+      e.target.reset();
+      document.getElementById('medCalcPreview').textContent = 'Inserisci mg/kg e mg/ml prescritti dal Veterinario per calcolare i ml esatti sul peso attuale.';
+      saveState();
+    }
+
+    function toggleMedAlarmQuick(medId) {
+      const p = getCurrentParrot();
+      const m = p.medications.find(x => x.id === medId);
+      if (!m) return;
+      if (m.linkedReminderId) {
+        const rem = state.reminders.find(r => r.id === m.linkedReminderId);
+        if (rem) {
+          rem.enabled = !rem.enabled;
+          rem.lastFiredDate = '';
+        } else {
+          state.reminders.push({
+            id: m.linkedReminderId,
+            title: `💊 Terapia ${p.name}: ${m.name}`,
+            time: m.alarmTime || '09:00',
+            mode: 'alarm',
+            soundStyle: m.soundStyle || 'chime',
+            enabled: true,
+            lastFiredDate: ''
+          });
+        }
+      } else {
+        const newRemId = 'med_rem_' + Date.now();
+        m.linkedReminderId = newRemId;
+        m.alarmTime = m.alarmTime || '09:00';
+        m.alarmMode = 'alarm';
+        state.reminders.push({
+          id: newRemId,
+          title: `💊 Terapia ${p.name}: ${m.name}`,
+          time: m.alarmTime,
+          mode: 'alarm',
+          soundStyle: m.soundStyle || 'chime',
+          enabled: true,
+          lastFiredDate: ''
+        });
+      }
+      saveState();
+    }
+
+    function toggleAllMedAlarms() {
+      const p = getCurrentParrot();
+      if (!p.medications || !p.medications.length) return;
+      const anyActive = p.medications.some(m => {
+        const r = m.linkedReminderId ? state.reminders.find(x => x.id === m.linkedReminderId) : null;
+        return r && r.enabled;
+      });
+      p.medications.forEach(m => {
+        const existing = m.linkedReminderId ? state.reminders.find(x => x.id === m.linkedReminderId) : null;
+        if (existing) {
+          existing.enabled = !anyActive;
+          existing.lastFiredDate = '';
+        } else if (!anyActive) {
+          const newRemId = m.linkedReminderId || ('med_rem_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
+          m.linkedReminderId = newRemId;
+          m.alarmTime = m.alarmTime || '09:00';
+          state.reminders.push({
+            id: newRemId,
+            title: `💊 Terapia ${p.name}: ${m.name}`,
+            time: m.alarmTime,
+            mode: 'alarm',
+            soundStyle: m.soundStyle || 'chime',
+            enabled: true,
+            lastFiredDate: ''
+          });
+        }
+      });
+      saveState();
+    }
+
+    function toggleMedDose(medId, slot) {
+      const m = getCurrentParrot().medications.find(x => x.id === medId);
+      if (!m) return;
+      const key = `${todayStr()}_${slot}`;
+      m.dosesTaken[key] = !m.dosesTaken[key];
+      saveState();
+    }
+
+    function deleteMedication(medId) {
+      const p = getCurrentParrot();
+      const m = p.medications.find(x => x.id === medId);
+      if (m && m.linkedReminderId) {
+        state.reminders = state.reminders.filter(r => r.id !== m.linkedReminderId);
+      }
+      p.medications = p.medications.filter(x => x.id !== medId);
+      saveState();
+    }
+
+    function renderMedicationsSection(parrot) {
+      const wGrams = getLatestWeightGrams(parrot);
+      const today = todayStr();
+      const todayMs = parseLocalDateStart(today).getTime();
+      const listEl = document.getElementById('medicationsList');
+      const homeBanner = document.getElementById('activeMedsHomeBanner');
+      const allBtn = document.getElementById('toggleAllMedsAlarmBtn');
+      const dueTodayMsgs = [];
+
+      if (!parrot.medications || !parrot.medications.length) {
+        listEl.innerHTML = '<p class="text-slate-400">Nessuna terapia farmacologica attiva.</p>';
+        homeBanner.classList.add('hidden');
+        allBtn.classList.add('hidden');
+        return;
+      }
+
+      const anyActive = parrot.medications.some(m => {
+        const r = m.linkedReminderId ? state.reminders.find(x => x.id === m.linkedReminderId) : null;
+        return r && r.enabled;
+      });
+      allBtn.classList.remove('hidden');
+      allBtn.textContent = anyActive ? '🔔 Disattiva Piano' : '🔕 Attiva Sveglie Piano';
+
+      listEl.innerHTML = parrot.medications.map(m => {
+        const ml = (m.conc > 0 && m.mgKg > 0) ? (((wGrams / 1000) * m.mgKg) / m.conc).toFixed(3) : '--';
+        const startMs = parseLocalDateStart(m.startDate || today).getTime();
+        const dayNum = Math.max(1, Math.floor((todayMs - startMs) / 86400000) + 1);
+        const amDone = !!m.dosesTaken[`${today}_AM`];
+        const pmDone = !!m.dosesTaken[`${today}_PM`];
+        const remObj = m.linkedReminderId ? state.reminders.find(r => r.id === m.linkedReminderId) : null;
+        const alarmActive = !!(remObj && remObj.enabled);
+
+        if (dayNum <= m.days && (!amDone || (m.freq === 2 && !pmDone))) {
+          dueTodayMsgs.push(`${escapeHtml(m.name)}: ${ml} ml (${!amDone ? 'Mattina da dare' : 'Sera da dare'})`);
+        }
+
+        return `
+          <div class="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <div class="font-bold text-indigo-950">${escapeHtml(m.name)} <span class="font-normal text-[11px] text-indigo-700">(Giorno ${Math.min(dayNum, m.days)} di ${m.days})</span></div>
+                <div class="text-[11px] text-indigo-900">Dose su <strong>${wGrams}g</strong>: <strong class="bg-white px-1.5 py-0.5 rounded border border-indigo-200">${ml} ml</strong> ${m.alarmTime ? `• ⏰ ${m.alarmTime}` : ''}</div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="toggleMedAlarmQuick('${m.id}')" class="px-2 py-1 rounded-lg text-[10px] font-bold border ${alarmActive ? 'bg-amber-400 text-slate-950 border-amber-500' : 'bg-white text-slate-500 border-slate-300'}">
+                  ${alarmActive ? '🔔 Sveglia ON' : '🔕 Sveglia OFF'}
+                </button>
+                <button onclick="deleteMedication('${m.id}')" class="text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="toggleMedDose('${m.id}', 'AM')" class="flex-1 py-1.5 rounded-lg font-bold text-[11px] border ${amDone ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-300'}">
+                ${amDone ? '✓ Mattina Data' : '○ Segna Dose Mattina'}
+              </button>
+              ${m.freq === 2 ? `
+                <button onclick="toggleMedDose('${m.id}', 'PM')" class="flex-1 py-1.5 rounded-lg font-bold text-[11px] border ${pmDone ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-700 border-slate-300'}">
+                  ${pmDone ? '✓ Sera Data' : '○ Segna Dose Sera'}
+                </button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (dueTodayMsgs.length) {
+        homeBanner.classList.remove('hidden');
+        homeBanner.innerHTML = `<div class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-pills text-indigo-600"></i> Terapie di oggi per ${escapeHtml(parrot.name)}:</div>` +
+          dueTodayMsgs.map(t => `<div>• ${t}</div>`).join('');
+      } else {
+        homeBanner.classList.add('hidden');
+      }
+    }
+
+    async function addVetExamPdf(e) {
+      e.preventDefault();
+      const file = document.getElementById('examPdfFileInput').files[0];
+      if (!file) return;
+      if (file.size > 15 * 1024 * 1024 && !confirm("Questo PDF supera i 15 MB. Vuoi comunque archiviarlo localmente in IndexedDB?")) return;
+      try {
+        const pdfId = 'exam_pdf_' + Date.now();
+        const dataUrl = await readFileAsDataUrl(file);
+        await savePdfToStore(pdfId, file.name, dataUrl);
+
+        getCurrentParrot().vetExamsPdf.unshift({
+          id: 'exdoc_' + Date.now(),
+          title: document.getElementById('examPdfTitle').value.trim(),
+          date: document.getElementById('examPdfDate').value,
+          fileName: file.name,
+          pdfId
+        });
+        document.getElementById('examPdfTitle').value = '';
+        document.getElementById('examPdfDate').value = '';
+        document.getElementById('examPdfFileInput').value = '';
+        saveState();
+      } catch {
+        alert("Impossibile salvare il PDF nell'archivio locale del browser (verifica che non sia attiva la modalità privata o che ci sia spazio sul dispositivo).");
+      }
+    }
+
+    async function deleteVetExamPdf(docId) {
+      if (!confirm("Eliminare questo referto PDF?")) return;
+      const p = getCurrentParrot();
+      const found = p.vetExamsPdf.find(x => x.id === docId);
+      if (found?.pdfId) await deletePdfFromStore(found.pdfId);
+      p.vetExamsPdf = p.vetExamsPdf.filter(x => x.id !== docId);
+      saveState();
+    }
+
+    function renderVetExamPdfs(parrot) {
+      const el = document.getElementById('vetExamPdfsList');
+      const docs = parrot.vetExamsPdf || [];
+      el.innerHTML = docs.length ? docs.map(d => `
+        <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center gap-2">
+          <div class="truncate">
+            <div class="font-bold text-slate-700 truncate">📄 ${escapeHtml(d.title)}</div>
+            <div class="text-[10px] text-slate-400">${d.date} • ${escapeHtml(d.fileName)}</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="openVetExamPdfById('${d.id}')" class="bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-bold text-[10px]">Vedi PDF</button>
+            <button onclick="deleteVetExamPdf('${d.id}')" class="text-slate-400 hover:text-rose-600 px-1"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('') : '<p class="text-slate-400">Nessun referto PDF caricato.</p>';
+    }
+
+    function cycleInfectiousTest(testId) {
+      const p = getCurrentParrot();
+      const states = ['Non eseguito', 'Negativo ✅', 'In attesa ⏳', 'Positivo ⚠️'];
+      const dnaStates = ['Non eseguito', 'Maschio ♂️', 'Femmina ♀️'];
+      const arr = testId === 'dna_sex' ? dnaStates : states;
+      const cur = p.infectiousTests[testId] || 'Non eseguito';
+      p.infectiousTests[testId] = arr[(arr.indexOf(cur) + 1) % arr.length];
+      saveState();
+    }
+
+    function saveLastCheckupDate(val) {
+      getCurrentParrot().lastCheckupDate = val;
+      saveState();
+    }
+
+    function renderInfectiousPanel(parrot) {
+      document.getElementById('infectiousTestsGrid').innerHTML = INFECTIOUS_TESTS.map(t => {
+        const val = parrot.infectiousTests[t.id] || 'Non eseguito';
+        const cls = val.includes('✅') || val.includes('♂️') || val.includes('♀️')
+          ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+          : (val.includes('⚠️') ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-600');
+        return `
+          <button onclick="cycleInfectiousTest('${t.id}')" class="p-2.5 rounded-xl border text-left ${cls}">
+            <div class="text-[10px] opacity-75 font-semibold">${t.label}</div>
+            <div class="font-bold text-xs mt-0.5">${val}</div>
+          </button>
+        `;
+      }).join('');
+
+      document.getElementById('lastCheckupDateInput').value = parrot.lastCheckupDate || '';
+      const cd = document.getElementById('annualCheckupCountdown');
+      if (parrot.lastCheckupDate) {
+        const nextDate = new Date(parseLocalDateStart(parrot.lastCheckupDate).getTime() + 365 * 86400000);
+        const todayMs = parseLocalDateStart(todayStr()).getTime();
+        const daysLeft = Math.round((nextDate.getTime() - todayMs) / 86400000);
+        cd.innerHTML = daysLeft > 0
+          ? `Prossimo controllo annuale tra <strong>${daysLeft} giorni</strong>`
+          : `<strong class="text-rose-600">⚠️ Check-up annuale scaduto da ${Math.abs(daysLeft)} giorni!</strong>`;
+      } else {
+        cd.textContent = 'Imposta la data dell’ultima visita veterinaria';
+      }
+      renderVetExamPdfs(parrot);
+    }
+
+    function logHealth(e) {
+      e.preventDefault();
+      getCurrentParrot().healthLogs.unshift({
+        ts: new Date().toISOString(),
+        droppings: document.getElementById('droppingsState').value,
+        urates: document.getElementById('uratesState').value,
+        notes: document.getElementById('healthNotes').value.trim()
+      });
+      document.getElementById('healthNotes').value = '';
+      saveState();
+    }
+
+    function addPhotoEntry(e) {
+      e.preventDefault();
+      const file = document.getElementById('photoFileInput').files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDim = 420;
+          let w = img.width, h = img.height;
+          if (w > h && w > maxDim) { h *= maxDim / w; w = maxDim; } else if (h > maxDim) { w *= maxDim / h; h = maxDim; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          getCurrentParrot().photos.unshift({
+            id: 'ph' + Date.now(),
+            date: todayStr(),
+            zone: document.getElementById('photoZone').value,
+            caption: document.getElementById('photoCaption').value.trim(),
+            dataUrl: canvas.toDataURL('image/jpeg', 0.6)
+          });
+          document.getElementById('photoFileInput').value = '';
+          document.getElementById('photoCaption').value = '';
+          lastPhotoCompareParrotId = '';
+          saveState();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function deletePhotoEntry(photoId) {
+      if (!confirm("Vuoi eliminare questa foto dalla galleria?")) return;
+      const p = getCurrentParrot();
+      p.photos = p.photos.filter(ph => ph.id !== photoId);
+      lastPhotoCompareParrotId = '';
+      saveState();
+    }
+
+    function populatePhotoSelectors(parrot) {
+      const container = document.getElementById('photoCompareContainer');
+      const listEl = document.getElementById('photosGalleryList');
+      if (!parrot.photos || parrot.photos.length === 0) {
+        container.classList.add('hidden');
+        listEl.innerHTML = '<p class="text-slate-400">Nessuna foto salvata.</p>';
+        lastPhotoCompareParrotId = parrot.id;
+        return;
+      }
+      container.classList.remove('hidden');
+      const leftSel = document.getElementById('compareSelectLeft');
+      const rightSel = document.getElementById('compareSelectRight');
+
+      const prevLeft = leftSel.value;
+      const prevRight = rightSel.value;
+      const sameParrot = (lastPhotoCompareParrotId === parrot.id);
+
+      const opts = parrot.photos.map((ph, i) => `<option value="${i}">${ph.date} - ${escapeHtml(ph.zone)}</option>`).join('');
+      leftSel.innerHTML = opts;
+      rightSel.innerHTML = opts;
+
+      if (sameParrot && prevLeft !== '' && Number(prevLeft) < parrot.photos.length) {
+        leftSel.value = prevLeft;
+      } else {
+        leftSel.value = parrot.photos.length > 1 ? parrot.photos.length - 1 : 0;
+      }
+
+      if (sameParrot && prevRight !== '' && Number(prevRight) < parrot.photos.length) {
+        rightSel.value = prevRight;
+      } else {
+        rightSel.value = 0;
+      }
+
+      lastPhotoCompareParrotId = parrot.id;
+      renderPhotoComparison();
+
+      listEl.innerHTML = parrot.photos.map(ph => `
+        <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center gap-2">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <img src="${ph.dataUrl}" onclick="openPhotoById('${ph.id}')" class="w-10 h-10 rounded-lg object-cover shrink-0 border cursor-pointer">
+            <div class="truncate">
+              <div class="font-bold text-slate-700 truncate">${escapeHtml(ph.zone)} ${ph.caption ? `• ${escapeHtml(ph.caption)}` : ''}</div>
+              <div class="text-[10px] text-slate-400">${ph.date}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="openPhotoById('${ph.id}')" class="bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg font-bold text-[10px]">Vedi</button>
+            <button onclick="deletePhotoEntry('${ph.id}')" class="text-rose-500 hover:text-rose-700 px-1.5 py-1"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderPhotoComparison() {
+      const p = getCurrentParrot();
+      const phL = p.photos[parseInt(document.getElementById('compareSelectLeft').value, 10) || 0];
+      const phR = p.photos[parseInt(document.getElementById('compareSelectRight').value, 10) || 0];
+      const renderBox = (ph) => ph
+        ? `<div class="relative w-full h-full cursor-pointer" onclick="openPhotoById('${ph.id}')"><img src="${ph.dataUrl}" class="w-full h-full object-cover"><div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] p-1 truncate">${escapeHtml(ph.zone)} ${ph.caption ? `• ${escapeHtml(ph.caption)}` : ''}</div></div>`
+        : '';
+      document.getElementById('compareBoxLeft').innerHTML = renderBox(phL);
+      document.getElementById('compareBoxRight').innerHTML = renderBox(phR);
+    }
+
+    // =========================================================================
+    // TRAINING & PREFERENZE OGGETTI
+    // =========================================================================
+    function addObjectPref(e) {
+      e.preventDefault();
+      getCurrentParrot().objectPrefs.unshift({
+        id: 'op_' + Date.now(),
+        type: document.getElementById('objPrefType').value,
+        name: document.getElementById('objPrefName').value.trim()
+      });
+      document.getElementById('objPrefName').value = '';
+      saveState();
+    }
+
+    function deleteObjectPref(id) {
+      const p = getCurrentParrot();
+      p.objectPrefs = p.objectPrefs.filter(x => x.id !== id);
+      saveState();
+    }
+
+    function renderObjectPrefs(parrot) {
+      const list = document.getElementById('objectPrefsList');
+      const items = parrot.objectPrefs || [];
+      list.innerHTML = items.length ? items.map(it => `
+        <div class="p-2 rounded-xl border ${it.type === 'like' ? 'bg-emerald-50/70 border-emerald-200' : 'bg-amber-50/70 border-amber-200'} flex justify-between items-center gap-2">
+          <span class="font-semibold text-slate-800">${it.type === 'like' ? '💚 Piace:' : '⚡ Non piace / Spaventa:'} ${escapeHtml(it.name)}</span>
+          <button onclick="deleteObjectPref('${it.id}')" class="text-slate-400 hover:text-rose-600 px-1"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `).join('') : '<p class="text-slate-400">Nessun oggetto registrato.</p>';
+    }
+
+    function renderTricksSection(parrot) {
+      const levels = [
+        { label: 'Da iniziare', cls: 'bg-slate-200 text-slate-700' },
+        { label: 'In corso', cls: 'bg-amber-100 text-amber-800' },
+        { label: 'Acquisito ⭐', cls: 'bg-emerald-100 text-emerald-800' }
+      ];
+      document.getElementById('tricksList').innerHTML = parrot.tricks.map(t => {
+        const lv = levels[t.level || 0];
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center">
+            <div><div class="font-bold text-slate-700">${escapeHtml(t.name)}</div><div class="text-[11px] text-slate-500">🥜 Premio: <strong>${escapeHtml(t.treat)}</strong></div></div>
+            <button onclick="cycleTrickLevel('${t.id}')" class="px-2.5 py-1 rounded-lg font-bold text-[11px] ${lv.cls}">${lv.label}</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function cycleTrickLevel(trickId) {
+      const t = getCurrentParrot().tricks.find(x => x.id === trickId);
+      if (t) t.level = ((t.level || 0) + 1) % 3;
+      saveState();
+    }
+
+    function addTrick(e) {
+      e.preventDefault();
+      getCurrentParrot().tricks.push({ id: 'tr' + Date.now(), name: document.getElementById('trickName').value.trim(), treat: document.getElementById('trickTreat').value.trim(), level: 0 });
+      e.target.reset();
+      saveState();
+    }
+
+    // =========================================================================
+    // GRAFICO PESO PULITO CON ALERT SU CALI IMPROVVISI
+    // =========================================================================
+    function evaluateHealth(parrot) {
+      const w = parrot.weights || [];
+      if (w.length < 2) return { level: 'ok', title: 'Stato Regolare', msg: 'Registra il peso per alcuni giorni per attivare il calcolo variazioni.' };
+      const latest = w[w.length - 1].grams;
+      const prevSlice = w.slice(Math.max(0, w.length - 8), w.length - 1);
+      const avg = prevSlice.reduce((s, x) => s + x.grams, 0) / prevSlice.length;
+      const diffPct = avg > 0 ? ((latest - avg) / avg) * 100 : 0;
+
+      const lastHealth = parrot.healthLogs[0];
+      const criticalHealth = lastHealth && (
+        lastHealth.droppings.includes('(!)') || lastHealth.urates.includes('Allerta')
+      );
+
+      if (diffPct <= -10 || criticalHealth) {
+        return {
+          level: 'danger',
+          title: 'ALLERTA ROSSA: Contatta il Veterinario Aviario',
+          msg: diffPct <= -10
+            ? `Calo di peso improvviso/critico (${diffPct.toFixed(1)}% rispetto alla media di ${avg.toFixed(1)}g).`
+            : `Segnalata anomalia nell'ultimo Check Feci.`
+        };
+      }
+      if (diffPct <= -5) {
+        return {
+          level: 'warn',
+          title: 'Attenzione: Calo di peso rilevato',
+          msg: `Variazione del ${diffPct.toFixed(1)}% rispetto alla media (${avg.toFixed(1)}g). Monitora peso e feci.`
+        };
+      }
+      return {
+        level: 'ok',
+        title: `${parrot.name} è in forma ottimale`,
+        msg: `Peso stabile (${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}% rispetto alla media di ${avg.toFixed(1)}g).`
+      };
+    }
+
+    function renderCleanWeightChart(parrot) {
+      if (typeof Chart === 'undefined') return;
+      const ctx = document.getElementById('weightChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      const recent = (parrot.weights || []).slice(-14);
+      const status = evaluateHealth(parrot);
+      const lineColor = status.level === 'danger' ? '#e11d48' : (status.level === 'warn' ? '#d97706' : '#059669');
+      const fillColor = status.level === 'danger' ? 'rgba(225, 29, 72, 0.12)' : (status.level === 'warn' ? 'rgba(217, 119, 6, 0.12)' : 'rgba(16, 185, 129, 0.12)');
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: recent.map(w => (w.date || '').slice(5)),
+          datasets: [{
+            label: 'Peso (g)',
+            data: recent.map(w => w.grams),
+            borderColor: lineColor,
+            backgroundColor: fillColor,
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointBackgroundColor: lineColor,
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { ticks: { font: { size: 11 } } },
+            x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // TEMPO FUORI GABBIA (MINIMO MANUALE, NO MASSIMO, RESET ORARIO, STORICO & INFO)
+    // =========================================================================
+    function openFlightInfoModal() {
+      const m = document.getElementById('flightInfoModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeFlightInfoModal() {
+      const m = document.getElementById('flightInfoModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function saveFlightSettings() {
+      const p = getCurrentParrot();
+      const minVal = parseInt(document.getElementById('flightMinTargetInput').value, 10);
+      const resetVal = document.getElementById('flightResetTimeInput').value;
+      if (!isNaN(minVal) && minVal >= 15) p.flightMinTarget = minVal;
+      if (resetVal) p.flightResetTime = resetVal;
+      saveState();
+    }
+
+    function setFlightPeriod(period) {
+      flightPeriod = period;
+      renderFlightSection(getCurrentParrot());
+    }
+
+    function checkFlightDailyReset() {
+      if (flightTimerStart && flightTimerParrotId) {
+        const timerParrot = state.parrots.find(x => x.id === flightTimerParrotId);
+        if (!timerParrot) return;
+        const currentTimerKey = getFlightDayKey(timerParrot.flightResetTime || '00:00');
+        if (flightTimerDayKey && flightTimerDayKey !== currentTimerKey) {
+          const elapsedMins = Math.max(1, Math.round((Date.now() - flightTimerStart) / 60000));
+          const oldKey = flightTimerDayKey;
+          flightTimerStart = Date.now();
+          flightTimerDayKey = currentTimerKey;
+          persistFlightTimerState();
+          addFlightMinutesOnKey(elapsedMins, oldKey, flightTimerParrotId);
+          return;
+        }
+      }
+      renderFlightSection(getCurrentParrot());
+    }
+
+    function syncFlightTimerButtonUI() {
+      const btn = document.getElementById('flightTimerBtn');
+      const liveEl = document.getElementById('flightLiveElapsed');
+      if (!btn || !liveEl) return;
+
+      if (flightTimerStart && flightTimerParrotId) {
+        const trackedParrot = state.parrots.find(x => x.id === flightTimerParrotId);
+        const secs = Math.max(0, Math.floor((Date.now() - flightTimerStart) / 1000));
+        const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+        const ss = String(secs % 60).padStart(2, '0');
+        btn.className = 'bg-rose-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 animate-pulse shrink-0';
+        btn.innerHTML = '<i class="fa-solid fa-stop"></i> Ferma e Salva';
+        liveEl.textContent = `⏱️ Timer in corso (${trackedParrot ? trackedParrot.name : ''}): ${mm}:${ss}`;
+        liveEl.classList.remove('hidden');
+      } else {
+        btn.className = 'bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0';
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Avvia Timer';
+        liveEl.classList.add('hidden');
+      }
+    }
+
+    function startFlightTimerTicker() {
+      syncFlightTimerButtonUI();
+      if (flightTimerTickInterval) clearInterval(flightTimerTickInterval);
+      flightTimerTickInterval = setInterval(syncFlightTimerButtonUI, 1000);
+    }
+
+    function renderFlightSection(parrot) {
+      if (!parrot) return;
+      const minTarget = parrot.flightMinTarget || 120;
+      const resetTime = parrot.flightResetTime || '00:00';
+      const activeDayKey = getFlightDayKey(resetTime);
+
+      document.getElementById('flightMinTargetInput').value = minTarget;
+      document.getElementById('flightResetTimeInput').value = resetTime;
+      syncFlightTimerButtonUI();
+
+      const entry = (parrot.flightLogs || []).find(f => f.date === activeDayKey);
+      const mins = entry ? entry.mins : 0;
+      const extra = mins - minTarget;
+
+      document.getElementById('flightTodaySubtitle').innerHTML = extra >= 0
+        ? `Oggi: <strong class="text-emerald-700">${mins} min</strong> • ✅ Minimo raggiunto (${minTarget} min${extra > 0 ? `, +${extra} min extra` : ''})`
+        : `Oggi: <strong>${mins} min</strong> • Minimo impostato: ${minTarget} min (mancano ${minTarget - mins} min)`;
+
+      const pct = Math.min(100, Math.round((mins / minTarget) * 100));
+      const bar = document.getElementById('flightProgressBar');
+      bar.style.width = `${pct}%`;
+      bar.className = extra >= 0 ? 'bg-emerald-500 h-full transition-all' : 'bg-amber-400 h-full transition-all';
+
+      ['day', 'week', 'month'].forEach(key => {
+        const b = document.getElementById(`flightPeriodBtn-${key}`);
+        if (b) {
+          b.className = key === flightPeriod
+            ? 'py-1.5 rounded-lg transition bg-white text-emerald-700 shadow-sm'
+            : 'py-1.5 rounded-lg transition text-slate-500 hover:text-slate-700';
+        }
+      });
+
+      const rangeDays = flightPeriod === 'day' ? 1 : (flightPeriod === 'week' ? 7 : 30);
+      const refDate = new Date(activeDayKey + 'T12:00:00');
+      const cutoffDate = new Date(refDate.getTime() - (rangeDays - 1) * 86400000);
+      const cutoffStr = formatLocalDate(cutoffDate);
+
+      const logsInPeriod = (parrot.flightLogs || [])
+        .filter(f => f.date >= cutoffStr && f.date <= activeDayKey)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const totalMins = logsInPeriod.reduce((s, f) => s + (f.mins || 0), 0);
+      const daysWithData = logsInPeriod.length;
+      const avgMins = daysWithData ? Math.round(totalMins / daysWithData) : 0;
+      const daysHitMin = logsInPeriod.filter(f => f.mins >= minTarget).length;
+
+      const periodLabel = flightPeriod === 'day' ? 'Oggi' : (flightPeriod === 'week' ? '7 giorni' : '30 giorni');
+      document.getElementById('flightHistoryStats').innerHTML = `
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-2">
+          <div class="text-[10px] text-slate-500">Media / giorno</div>
+          <div class="font-extrabold text-emerald-700 text-sm">${avgMins} min</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-2">
+          <div class="text-[10px] text-slate-500">Totale (${periodLabel})</div>
+          <div class="font-extrabold text-slate-800 text-sm">${totalMins} min</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-2">
+          <div class="text-[10px] text-slate-500">Minimo OK</div>
+          <div class="font-extrabold text-indigo-700 text-sm">${daysHitMin}/${daysWithData} gg</div>
+        </div>
+      `;
+
+      const listEl = document.getElementById('flightHistoryList');
+      listEl.innerHTML = logsInPeriod.length ? logsInPeriod.map(f => {
+        const ok = f.mins >= minTarget;
+        return `
+          <div class="p-2 rounded-xl border ${ok ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'} flex justify-between items-center">
+            <div>
+              <span class="font-bold text-slate-700">${f.date}</span>
+              <span class="text-[11px] ml-1.5 ${ok ? 'text-emerald-700 font-semibold' : 'text-amber-700'}">${ok ? '✅ Minimo OK' : 'Sotto minimo'}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-slate-800">${f.mins} min</span>
+              <button type="button" onclick="deleteFlightLog('${f.date}')" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `;
+      }).join('') : `<p class="text-slate-400 text-center py-2">Nessuna sessione registrata in questo periodo.</p>`;
+    }
+
+    function deleteFlightLog(dateKey) {
+      if (!confirm(`Eliminare i minuti registrati il ${dateKey}?`)) return;
+      const p = getCurrentParrot();
+      p.flightLogs = (p.flightLogs || []).filter(f => f.date !== dateKey);
+      saveState();
+    }
+
+    function toggleFlightTimer() {
+      if (!flightTimerStart) {
+        const cur = getCurrentParrot();
+        flightTimerStart = Date.now();
+        flightTimerParrotId = cur.id;
+        flightTimerDayKey = getFlightDayKey(cur.flightResetTime || '00:00');
+        persistFlightTimerState();
+        startFlightTimerTicker();
+      } else {
+        const elapsedMins = Math.max(1, Math.round((Date.now() - flightTimerStart) / 60000));
+        const targetId = flightTimerParrotId || getCurrentParrot().id;
+        const targetParrot = state.parrots.find(x => x.id === targetId) || getCurrentParrot();
+        const dayKey = getFlightDayKey(targetParrot.flightResetTime || '00:00');
+        flightTimerStart = null;
+        flightTimerParrotId = null;
+        flightTimerDayKey = '';
+        persistFlightTimerState();
+        if (flightTimerTickInterval) { clearInterval(flightTimerTickInterval); flightTimerTickInterval = null; }
+        syncFlightTimerButtonUI();
+        addFlightMinutesOnKey(elapsedMins, dayKey, targetParrot.id);
+      }
+    }
+
+    function logManualFlight(e) {
+      e.preventDefault();
+      const mins = parseInt(document.getElementById('manualFlightMins').value, 10);
+      if (mins > 0) addFlightMinutes(mins);
+      document.getElementById('manualFlightMins').value = '';
+    }
+
+    function addFlightMinutesOnKey(mins, dayKey, parrotId = null) {
+      const p = parrotId ? (state.parrots.find(x => x.id === parrotId) || getCurrentParrot()) : getCurrentParrot();
+      const existing = p.flightLogs.find(f => f.date === dayKey);
+      if (existing) existing.mins += mins; else p.flightLogs.unshift({ date: dayKey, mins });
+      saveState();
+    }
+
+    function addFlightMinutes(mins) {
+      const p = getCurrentParrot();
+      const dayKey = getFlightDayKey(p.flightResetTime || '00:00');
+      addFlightMinutesOnKey(mins, dayKey, p.id);
+    }
+
+    // =========================================================================
+    // DISPENSA, GABBIA, PROFILI, STAMPE
+    // =========================================================================
+    function renderPantry() {
+      const list = document.getElementById('pantryList');
+      const lowAlerts = [];
+      const todayMs = parseLocalDateStart(todayStr()).getTime();
+      list.innerHTML = state.pantry.length ? state.pantry.map(item => {
+        const daysLeft = Math.max(0, Math.floor(item.grams / (item.daily || 1)));
+        const expDays = item.expiry ? Math.round((parseLocalDateStart(item.expiry).getTime() - todayMs) / 86400000) : 999;
+        const isLow = daysLeft <= 7 || expDays <= 14;
+        if (isLow) lowAlerts.push(`${escapeHtml(item.name)} (${daysLeft <= 7 ? `finisce tra ~${daysLeft}gg` : `scade tra ${expDays}gg`})`);
+        return `
+          <div class="p-2.5 rounded-xl border ${isLow ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200'} flex justify-between items-center">
+            <div><div class="font-bold text-slate-700">${escapeHtml(item.name)}</div><div class="text-[11px] text-slate-500">Rimasti: <strong>${item.grams}g</strong> (~${daysLeft} giorni) • Scad: ${item.expiry}</div></div>
+            <button onclick="removePantryItem('${item.id}')" class="text-slate-400 hover:text-rose-500 px-2"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        `;
+      }).join('') : '<p class="text-slate-400">Nessun prodotto in dispensa.</p>';
+
+      const homeAlert = document.getElementById('lowPantryAlertHome');
+      const chopLow = (state.chopBatches ?? 0) < (state.chopAlertThreshold ?? 2);
+      if (lowAlerts.length > 0 || chopLow) {
+        homeAlert.classList.remove('hidden');
+        const chopMsg = chopLow ? `Scorta Chop sotto soglia (${state.chopBatches} porzioni)` : '';
+        homeAlert.innerHTML = `<strong>📦 Avviso Scorte:</strong> ${[...lowAlerts, chopMsg].filter(Boolean).join(' • ')}`;
+      } else homeAlert.classList.add('hidden');
+    }
+
+    function addPantryItem(e) {
+      e.preventDefault();
+      state.pantry.push({
+        id: 'pan' + Date.now(), name: document.getElementById('pantryName').value.trim(), category: document.getElementById('pantryCategory').value,
+        grams: parseFloat(document.getElementById('pantryGrams').value), daily: parseFloat(document.getElementById('pantryDaily').value), expiry: document.getElementById('pantryExpiry').value
+      });
+      e.target.reset();
+      saveState();
+    }
+
+    function removePantryItem(id) { state.pantry = state.pantry.filter(x => x.id !== id); saveState(); }
+
+    function saveCageSetup(e) {
+      e.preventDefault();
+      getCurrentParrot().cageSetup = {
+        sizeClass: document.getElementById('cageSizeClass').value,
+        barSpacing: parseFloat(document.getElementById('cageBarSpacing').value),
+        width: parseFloat(document.getElementById('cageWidth').value),
+        depth: parseFloat(document.getElementById('cageDepth').value),
+        height: parseFloat(document.getElementById('cageHeight').value),
+        naturalPerches: document.getElementById('cageNaturalPerches').checked
+      };
+      saveState();
+    }
+
+    function renderCageSetupSection(parrot) {
+      const resBox = document.getElementById('cageAuditResult');
+      const cs = parrot.cageSetup;
+      if (!cs) {
+        resBox.innerHTML = '';
+        document.getElementById('cageBarSpacing').value = '';
+        document.getElementById('cageWidth').value = '';
+        document.getElementById('cageDepth').value = '';
+        document.getElementById('cageHeight').value = '';
+        document.getElementById('cageNaturalPerches').checked = false;
+        return;
+      }
+      document.getElementById('cageSizeClass').value = cs.sizeClass;
+      document.getElementById('cageBarSpacing').value = cs.barSpacing;
+      document.getElementById('cageWidth').value = cs.width;
+      document.getElementById('cageDepth').value = cs.depth;
+      document.getElementById('cageHeight').value = cs.height;
+      document.getElementById('cageNaturalPerches').checked = !!cs.naturalPerches;
+
+      const spec = CAGE_SPECS_BY_SIZE[cs.sizeClass];
+      const issues = [];
+      if (cs.barSpacing > spec.maxBar) {
+        issues.push(`⛔ <strong>PERICOLO INCASTRO TESTA:</strong> Sbarre a ${cs.barSpacing}mm troppo larghe per taglia ${spec.label} (max sicuro: ${spec.maxBar}mm).`);
+      } else if (cs.barSpacing < spec.minBar - 2) {
+        issues.push(`⚠️ Sbarre molto strette (${cs.barSpacing}mm): attenzione a unghie o becco.`);
+      }
+      if (cs.width < spec.minW || cs.depth < spec.minD) {
+        issues.push(`⚠️ Dimensioni (${cs.width}×${cs.depth}cm) sotto il minimo consigliato (${spec.minW}×${spec.minD}cm).`);
+      }
+      if (!cs.naturalPerches) {
+        issues.push(`🦶 <strong>Rischio Bumblefoot:</strong> Sostituisci i posatoi uniformi in plastica con rami naturali di diametro variabile.`);
+      }
+      resBox.innerHTML = issues.length
+        ? `<div class="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-950 space-y-1">${issues.map(i => `<div>${i}</div>`).join('')}</div>`
+        : `<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-semibold">✅ Setup Gabbia e posatoi pienamente sicuri!</div>`;
+    }
+
+    function renderAdminSection() {
+      const room = getMyFamilyRoom();
+      document.getElementById('syncUnlinkedView').classList.toggle('hidden', !!room);
+      document.getElementById('syncLinkedView').classList.toggle('hidden', !room);
+      if (room) {
+        document.getElementById('displayFamilyRoomCode').textContent = room;
+        setHeaderSyncStatus('live');
+      } else {
+        setHeaderSyncStatus('local');
+      }
+
+      const notice = document.getElementById('publicSyncNotice');
+      if (!isBackendReady()) {
+        notice.classList.remove('hidden');
+        notice.textContent = "🛠️ Promemoria Sviluppatore: incolla il tuo BACKEND_URL e BACKEND_ANON_KEY di Supabase nelle righe di configurazione prima del deploy su GitHub Pages.";
+      } else {
+        notice.classList.add('hidden');
+      }
+    }
+
+    function renderFirstAidChecklist() {
+      let checkedCount = 0;
+      document.getElementById('firstAidChecklist').innerHTML = FIRST_AID_ITEMS.map(item => {
+        const checked = !!state.firstAidChecked[item.id];
+        if (checked) checkedCount++;
+        return `<label class="flex items-center gap-2.5 p-2 rounded-lg bg-white border ${checked ? 'border-emerald-200' : 'border-amber-300'} cursor-pointer"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleFirstAid('${item.id}')" class="rounded text-emerald-600"><span class="${checked ? 'text-slate-700' : 'text-amber-900 font-semibold'}">${item.label}</span></label>`;
+      }).join('');
+
+      const badge = document.getElementById('firstAidProgressBadge');
+      if (badge) {
+        badge.textContent = `${checkedCount}/${FIRST_AID_ITEMS.length}`;
+        badge.className = checkedCount === FIRST_AID_ITEMS.length
+          ? 'text-[11px] font-extrabold bg-emerald-600 text-white px-2 py-0.5 rounded-full shadow-sm'
+          : 'text-[11px] font-extrabold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shadow-sm';
+      }
+    }
+
+    function toggleFirstAid(id) { state.firstAidChecked[id] = !state.firstAidChecked[id]; saveState(); }
+
+    function logWeight(e) {
+      e.preventDefault();
+      const val = parseFloat(document.getElementById('weightInput').value);
+      if (!val || val <= 0) return;
+      const p = getCurrentParrot();
+      const today = todayStr();
+      const idx = p.weights.findIndex(x => x.date === today);
+      if (idx >= 0) p.weights[idx].grams = val; else p.weights.push({ date: today, grams: val });
+      p.weights.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      document.getElementById('weightInput').value = '';
+      saveState();
+    }
+
+    function triggerTask(taskId) { getCurrentParrot().tasks[taskId] = new Date().toISOString(); saveState(); }
+
+    function selectParrot(id) { state.activeId = id; saveState(true); }
+
+    // GESTIONE FOTO PROFILO NEL MODAL
+    function updateModalAvatarPreview(dataUrl) {
+      const box = document.getElementById('newParrotAvatarPreview');
+      const removeBtn = document.getElementById('removeAvatarBtn');
+      if (dataUrl) {
+        box.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
+        removeBtn.classList.remove('hidden');
+      } else {
+        box.innerHTML = `<i class="fa-solid fa-feather-pointed"></i>`;
+        removeBtn.classList.add('hidden');
+      }
+    }
+
+    async function handleAvatarFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        pendingAvatarDataUrl = await compressAvatarImage(file);
+        updateModalAvatarPreview(pendingAvatarDataUrl);
+      } catch {
+        alert("Impossibile elaborare l'immagine selezionata.");
+      }
+    }
+
+    function clearPendingAvatar() {
+      pendingAvatarDataUrl = '';
+      document.getElementById('newParrotAvatarInput').value = '';
+      updateModalAvatarPreview('');
+    }
+
+    function toggleModal(show) {
+      const m = document.getElementById('parrotModal');
+      m.classList.toggle('hidden', !show);
+      m.classList.toggle('flex', show);
+    }
+
+    function openNewParrotModal() {
+      document.getElementById('parrotModalTitle').textContent = 'Aggiungi Pappagallo';
+      document.getElementById('editParrotMode').value = 'new';
+      document.getElementById('newParrotWeight').classList.remove('hidden');
+      pendingAvatarDataUrl = '';
+      updateModalAvatarPreview('');
+      document.getElementById('newParrotAvatarInput').value = '';
+      ['newParrotName','newParrotSpecies','newParrotRing','newParrotWeight','newParrotVet','newParrotSounds','newParrotOwnerName','newParrotOwnerPhone','newParrotSocial'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('newParrotCitesPdf').value = '';
+      document.getElementById('modalCitesPdfStatus').classList.add('hidden');
+      document.getElementById('modalViewCitesBtn').classList.add('hidden');
+      toggleModal(true);
+    }
+
+    function openEditParrotModal() {
+      const p = getCurrentParrot();
+      document.getElementById('parrotModalTitle').textContent = `Modifica ${p.name}`;
+      document.getElementById('editParrotMode').value = 'edit';
+      document.getElementById('newParrotWeight').classList.add('hidden');
+      pendingAvatarDataUrl = null;
+      updateModalAvatarPreview(p.avatar || '');
+      document.getElementById('newParrotAvatarInput').value = '';
+      document.getElementById('newParrotName').value = p.name || '';
+      document.getElementById('newParrotSpecies').value = p.species || '';
+      document.getElementById('newParrotRing').value = p.ring || '';
+      document.getElementById('newParrotVet').value = p.vet || '';
+      document.getElementById('newParrotSounds').value = p.sounds || '';
+      document.getElementById('newParrotOwnerName').value = p.ownerName || '';
+      document.getElementById('newParrotOwnerPhone').value = p.ownerPhone || '';
+      document.getElementById('newParrotSocial').value = p.social || '';
+      document.getElementById('newParrotCitesPdf').value = '';
+
+      const statusEl = document.getElementById('modalCitesPdfStatus');
+      const viewBtn = document.getElementById('modalViewCitesBtn');
+      if (p.cites?.pdfName) {
+        statusEl.textContent = `✅ Salvato: ${p.cites.pdfName}`;
+        statusEl.classList.remove('hidden');
+        viewBtn.classList.remove('hidden');
+      } else {
+        statusEl.classList.add('hidden');
+        viewBtn.classList.add('hidden');
+      }
+      toggleModal(true);
+    }
+
+    async function saveParrotModal(e) {
+      e.preventDefault();
+      const mode = document.getElementById('editParrotMode').value;
+      const pdfFile = document.getElementById('newParrotCitesPdf').files[0];
+
+      if (pdfFile && pdfFile.size > 15 * 1024 * 1024 && !confirm("Questo PDF supera i 15 MB. Vuoi comunque archiviarlo localmente in IndexedDB?")) {
+        return;
+      }
+
+      if (mode === 'edit') {
+        const p = getCurrentParrot();
+        if (pendingAvatarDataUrl !== null) p.avatar = pendingAvatarDataUrl;
+        p.name = document.getElementById('newParrotName').value.trim();
+        p.species = document.getElementById('newParrotSpecies').value.trim();
+        p.ring = document.getElementById('newParrotRing').value.trim();
+        p.vet = document.getElementById('newParrotVet').value.trim();
+        p.sounds = document.getElementById('newParrotSounds').value.trim();
+        p.ownerName = document.getElementById('newParrotOwnerName').value.trim();
+        p.ownerPhone = document.getElementById('newParrotOwnerPhone').value.trim();
+        p.social = document.getElementById('newParrotSocial').value.trim();
+
+        if (pdfFile) {
+          try {
+            const pdfId = p.cites?.pdfId || ('cites_pdf_' + p.id + '_' + Date.now());
+            const dataUrl = await readFileAsDataUrl(pdfFile);
+            await savePdfToStore(pdfId, pdfFile.name, dataUrl);
+            p.cites = { ...(p.cites || {}), pdfId, pdfName: pdfFile.name };
+          } catch {
+            alert("Profilo salvato, ma non è stato possibile salvare il PDF CITES nell'archivio locale del browser.");
+          }
+        }
+      } else {
+        const id = 'p' + Date.now();
+        const initW = parseFloat(document.getElementById('newParrotWeight').value) || 100;
+        let pdfId = '';
+        let pdfName = '';
+        if (pdfFile) {
+          try {
+            pdfId = 'cites_pdf_' + id;
+            pdfName = pdfFile.name;
+            const dataUrl = await readFileAsDataUrl(pdfFile);
+            await savePdfToStore(pdfId, pdfFile.name, dataUrl);
+          } catch {
+            pdfId = '';
+            pdfName = '';
+            alert("Non è stato possibile salvare il PDF CITES nell'archivio locale del browser. Il profilo verrà comunque creato.");
+          }
+        }
+
+        state.parrots.push({
+          id,
+          avatar: pendingAvatarDataUrl || '',
+          name: document.getElementById('newParrotName').value.trim(),
+          species: document.getElementById('newParrotSpecies').value.trim(),
+          ring: document.getElementById('newParrotRing').value.trim(),
+          vet: document.getElementById('newParrotVet').value.trim(),
+          sounds: document.getElementById('newParrotSounds').value.trim(),
+          ownerName: document.getElementById('newParrotOwnerName').value.trim(),
+          ownerPhone: document.getElementById('newParrotOwnerPhone').value.trim(),
+          social: document.getElementById('newParrotSocial').value.trim(),
+          bedtime: '20:30',
+          flightMinTarget: 120,
+          flightResetTime: '00:00',
+          conversionPct: 70,
+          cites: { pdfId, pdfName },
+          cageSetup: null,
+          medications: [],
+          vetExamsPdf: [],
+          infectiousTests: {},
+          lastCheckupDate: '',
+          objectPrefs: [],
+          weights: [{ date: todayStr(), grams: initW }],
+          tasks: {},
+          dietLogs: [],
+          healthLogs: [],
+          tricks: [{ id: 't1', name: 'Step-Up', treat: 'Pinolo', level: 0 }],
+          flightLogs: [],
+          photos: []
+        });
+        state.activeId = id;
+      }
+      toggleModal(false);
+      saveState();
+    }
+
+    async function deleteCurrentParrot() {
+      if (state.parrots.length <= 1) { alert("Devi mantenere almeno un profilo attivo."); return; }
+      const p = getCurrentParrot();
+      if (confirm(`Sei sicuro di voler eliminare del tutto il profilo di ${p.name} e tutto il suo storico?`)) {
+        const linkedIds = new Set((p.medications || []).map(m => m.linkedReminderId).filter(Boolean));
+        if (linkedIds.size) {
+          state.reminders = state.reminders.filter(r => !linkedIds.has(r.id));
+        }
+        if (p.cites?.pdfId) await deletePdfFromStore(p.cites.pdfId);
+        for (const doc of (p.vetExamsPdf || [])) {
+          if (doc.pdfId) await deletePdfFromStore(doc.pdfId);
+        }
+        if (flightTimerParrotId === p.id) {
+          flightTimerStart = null;
+          flightTimerParrotId = null;
+          flightTimerDayKey = '';
+          persistFlightTimerState();
+          if (flightTimerTickInterval) { clearInterval(flightTimerTickInterval); flightTimerTickInterval = null; }
+        }
+
+        state.parrots = state.parrots.filter(item => item.id !== state.activeId);
+        state.activeId = state.parrots[0].id;
+        saveState();
+      }
+    }
+
+    function switchTab(tab) {
+      ['home', 'diet', 'health', 'training', 'safety', 'admin'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+        document.getElementById(`nav-${t}`).className = t === tab
+          ? 'py-2.5 text-emerald-600 font-semibold flex flex-col items-center text-[10px]'
+          : 'py-2.5 text-slate-400 flex flex-col items-center text-[10px]';
+      });
+    }
+
+    // STAMPE SPECIALI
+    function exportVetReport() {
+      const p = getCurrentParrot();
+      const testsHtml = Object.entries(p.infectiousTests || {}).map(([k, v]) => `<span class="border px-2 py-1 rounded text-xs"><strong>${k.toUpperCase()}:</strong> ${v}</span>`).join(' ');
+      const likes = (p.objectPrefs || []).filter(o => o.type === 'like').map(o => o.name).join(', ');
+      const dislikes = (p.objectPrefs || []).filter(o => o.type === 'dislike').map(o => o.name).join(', ');
+
+      document.getElementById('printReportArea').innerHTML = `
+        <div class="border-b-2 border-emerald-700 pb-3 mb-4 flex justify-between items-end">
+          <div class="flex items-center gap-3">
+            ${p.avatar ? `<img src="${p.avatar}" class="w-14 h-14 rounded-full object-cover border">` : ''}
+            <div>
+              <h1 class="text-2xl font-bold text-emerald-800">Scheda Clinica & Storico Aviario</h1>
+              <p class="text-slate-600">Paziente: <strong>${escapeHtml(p.name)}</strong> (${escapeHtml(p.species)}) ${p.ring ? `— Anello/CITES: ${escapeHtml(p.ring)}` : ''}</p>
+            </div>
+          </div>
+          <div class="text-xs text-slate-500">Data Report: ${new Date().toLocaleDateString('it-IT')}</div>
+        </div>
+        ${testsHtml ? `<div class="mb-4"><h2 class="font-bold text-sm mb-1">Test Infettivologici & Sessaggio</h2><div class="flex flex-wrap gap-2">${testsHtml}</div></div>` : ''}
+        ${(likes || dislikes) ? `<div class="mb-4 text-xs bg-slate-50 border p-2.5 rounded-lg">${likes ? `<div><strong>Gradisce:</strong> ${escapeHtml(likes)}</div>` : ''}${dislikes ? `<div><strong>Spaventa / Non gradisce:</strong> ${escapeHtml(dislikes)}</div>` : ''}</div>` : ''}
+        <h2 class="font-bold text-base mt-4 mb-2">Ultimi Rilevamenti Peso</h2>
+        <div class="grid grid-cols-5 gap-2 mb-4">${p.weights.slice(-10).map(w => `<div class="border p-2 rounded text-center"><div class="text-xs text-slate-500">${w.date}</div><div class="font-bold">${w.grams}g</div></div>`).join('')}</div>
+        <h2 class="font-bold text-base mt-4 mb-2">Check Feci & Diario Clinico</h2>
+        <table class="w-full border-collapse border border-slate-300 text-xs mb-4">
+          <thead><tr class="bg-slate-100"><th class="border p-1.5 text-left">Data</th><th class="border p-1.5 text-left">Feci</th><th class="border p-1.5 text-left">Urati</th><th class="border p-1.5 text-left">Note</th></tr></thead>
+          <tbody>${p.healthLogs.slice(0, 15).map(h => `<tr><td class="border p-1.5">${new Date(h.ts).toLocaleDateString('it-IT')}</td><td class="border p-1.5">${escapeHtml(h.droppings)}</td><td class="border p-1.5">${escapeHtml(h.urates)}</td><td class="border p-1.5">${escapeHtml(h.notes || '-')}</td></tr>`).join('')}</tbody>
+        </table>
+        <h2 class="font-bold text-base mt-4 mb-2">Alimentazione Recente</h2>
+        <table class="w-full border-collapse border border-slate-300 text-xs">
+          <thead><tr class="bg-slate-100"><th class="border p-1.5 text-left">Data</th><th class="border p-1.5 text-left">Alimento</th><th class="border p-1.5 text-left">Dati / Mangiati</th><th class="border p-1.5 text-left">Note</th></tr></thead>
+          <tbody>${p.dietLogs.slice(0, 15).map(d => `<tr><td class="border p-1.5">${new Date(d.ts).toLocaleDateString('it-IT')}</td><td class="border p-1.5">${escapeHtml(d.type)}</td><td class="border p-1.5">Dati ${d.offered}g • Mangiati ${d.eaten}g (Avanzo ${Math.max(0, (d.offered - d.eaten)).toFixed(1)}g)</td><td class="border p-1.5">${escapeHtml(d.notes || '-')}</td></tr>`).join('')}</tbody>
+        </table>
+      `;
+      triggerSafePrint();
+    }
+
+    function openSOSGenerator() {
+      const p = getCurrentParrot();
+      const mainPhoto = p.avatar || (p.photos && p.photos.length ? p.photos[0].dataUrl : null);
+      const contactLine = [p.ownerName, p.ownerPhone, p.social].filter(Boolean).join(' • ') || 'INSERISCI CONTATTI IN MODIFICA PROFILO';
+      document.getElementById('printReportArea').innerHTML = `
+        <div class="border-4 border-rose-600 p-6 rounded-2xl text-center space-y-4">
+          <div class="bg-rose-600 text-white py-3 px-4 rounded-xl"><h1 class="text-4xl font-extrabold uppercase">PAPPAGALLO SMARRITO</h1><p class="text-base font-semibold mt-1">Aiutaci a riportarlo a casa!</p></div>
+          ${mainPhoto ? `<img src="${mainPhoto}" class="w-64 h-64 object-cover mx-auto rounded-2xl border-2 border-slate-300">` : `<div class="w-64 h-48 mx-auto border-2 border-dashed border-slate-400 rounded-2xl flex items-center justify-center text-slate-400">Spazio per Foto Recente</div>`}
+          <div class="space-y-1 text-lg"><p>Nome: <strong class="text-2xl">${escapeHtml(p.name)}</strong> • Specie: <strong>${escapeHtml(p.species)}</strong></p>${p.ring ? `<p class="text-sm text-slate-700">Anello / Microchip: <strong>${escapeHtml(p.ring)}</strong></p>` : ''}<p class="text-base">Risponde a: <strong>${escapeHtml(p.sounds || 'Fischi dolci e il suo nome')}</strong></p></div>
+          <div class="bg-amber-50 border border-amber-300 p-4 rounded-xl text-left text-sm"><strong>⚠️ Se lo avvisti:</strong> Non inseguirlo bruscamente. Avvicinati con calma parlando piano e offrigli acqua o un pezzetto di mela/noce.</div>
+          <div class="bg-slate-900 text-white py-4 px-6 rounded-xl"><div class="text-sm uppercase opacity-80">Contatta subito</div><div class="text-xl font-extrabold mt-1">${escapeHtml(contactLine)}</div></div>
+        </div>
+      `;
+      triggerSafePrint();
+    }
+
+    function openPetSitterModal() {
+      document.getElementById('printReportArea').innerHTML = `
+        <div class="space-y-5">
+          <div class="border-b-2 border-indigo-700 pb-3 flex justify-between items-end"><div><h1 class="text-2xl font-bold text-indigo-800">Guida Rapida Pet Sitter & Emergenze</h1><p class="text-slate-600">Routine, orari sonno (12h), preferenze oggetti e sicurezza</p></div><div class="text-xs text-slate-500">${new Date().toLocaleDateString('it-IT')}</div></div>
+          <div class="bg-rose-50 border-2 border-rose-500 p-4 rounded-xl space-y-1.5">
+            <h2 class="font-bold text-rose-800 text-base">⛔ REGOLE D'ORO DI SICUREZZA (VITALI)</h2>
+            <ul class="list-disc pl-5 text-xs space-y-1">
+              <li><strong>FINESTRE E PORTE:</strong> Chiudere SEMPRE tutte le finestre/balconi PRIMA di aprire la gabbia.</li>
+              <li><strong>VIETATO USARE PADELLE ANTIADERENTI (TEFLON/PTFE):</strong> I fumi uccidono i pappagalli in pochi minuti.</li>
+              <li><strong>NIENTE SPRAY, CANDELE O INCENSI.</strong></li>
+              <li><strong>CIBI MORTALI:</strong> Mai dare Avocado, Cioccolato, Cipolla/Aglio, Alcol, Caffè, semi di mela/noccioli o cibi salati.</li>
+            </ul>
+          </div>
+          ${state.parrots.map(p => {
+            const bt = p.bedtime || '20:30';
+            const wt = computeWakeTimeFromBedtime(bt);
+            const likes = (p.objectPrefs || []).filter(o => o.type === 'like').map(o => o.name).join(', ') || '-';
+            const dislikes = (p.objectPrefs || []).filter(o => o.type === 'dislike').map(o => o.name).join(', ') || '-';
+            return `
+              <div class="border border-slate-300 rounded-xl p-4 space-y-2">
+                <div class="flex items-center gap-2.5">
+                  ${p.avatar ? `<img src="${p.avatar}" class="w-10 h-10 rounded-full object-cover border">` : ''}
+                  <h3 class="font-bold text-base text-slate-800">${escapeHtml(p.name)} (${escapeHtml(p.species)})</h3>
+                </div>
+                <p class="text-xs"><strong>🌙 Sonno (12h indicativi):</strong> Nanna alle <strong>${bt}</strong> → Risveglio indicativo alle <strong>${wt}</strong>.</p>
+                <p class="text-xs"><strong>Alimentazione:</strong> ${p.dietLogs.slice(0, 3).map(d => `${escapeHtml(d.type)} (dati ${d.offered}g, mangiati ${d.eaten}g)`).join(', ') || 'Estrusi + Chop fresco al mattino.'}</p>
+                <p class="text-xs"><strong>Premi rientro in gabbia:</strong> ${p.tricks.map(t => escapeHtml(t.treat)).filter(Boolean).join(', ') || 'Pinolo / noce'}.</p>
+                <p class="text-xs"><strong>💚 Oggetti che piacciono:</strong> ${escapeHtml(likes)}</p>
+                <p class="text-xs"><strong>⚡ Oggetti che non piacciono / spaventano:</strong> ${escapeHtml(dislikes)}</p>
+                <p class="text-xs text-rose-700"><strong>🩺 Veterinario Aviario:</strong> ${escapeHtml(p.vet || 'Contattare subito il proprietario')}</p>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      triggerSafePrint();
+    }
+
+    function downloadBackupJSON() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `AvianCare_Backup_${todayStr()}.json`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function restoreBackupJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (!imported.parrots || !Array.isArray(imported.parrots)) throw new Error();
+          state = normalizeState(imported);
+          saveState();
+          alert("Backup ripristinato con successo!");
+        } catch {
+          alert("File JSON non valido.");
+        } finally {
+          e.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function renderAll() {
+      const p = getCurrentParrot();
+      if (!p) return;
+
+      document.getElementById('activeAlarmsBadge').textContent = state.reminders.filter(r => r.enabled).length;
+
+      document.getElementById('parrotSelector').innerHTML = state.parrots.map(item => `
+        <div class="flex items-center rounded-full text-xs font-semibold whitespace-nowrap transition ${item.id === p.id ? 'bg-white text-emerald-800 shadow' : 'bg-emerald-600/60 text-emerald-100'}">
+          <button type="button" onclick="openParrotQuickCard('${item.id}')" title="Scheda rapida & CITES" class="pl-1.5 pr-1 py-1 rounded-l-full hover:opacity-85 flex items-center">
+            ${renderAvatarHtml(item, 'w-6 h-6', 'text-[11px]')}
+          </button>
+          <button type="button" onclick="selectParrot('${item.id}')" class="pr-3.5 pl-1 py-1.5 rounded-r-full">
+            ${escapeHtml(item.name)}
+          </button>
+        </div>
+      `).join('') + `
+        <button onclick="openNewParrotModal()" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-900/50 text-emerald-100 whitespace-nowrap">
+          + Aggiungi
+        </button>
+      `;
+
+      const status = evaluateHealth(p);
+      const banner = document.getElementById('healthAlertBanner');
+      const styles = { ok: 'bg-emerald-50 border-emerald-200 text-emerald-900', warn: 'bg-amber-50 border-amber-300 text-amber-900', danger: 'bg-rose-50 border-rose-300 text-rose-900' };
+      const icons = { ok: 'fa-circle-check text-emerald-600', warn: 'fa-triangle-exclamation text-amber-500', danger: 'fa-bell text-rose-600 animate-bounce' };
+      banner.className = `p-3.5 rounded-2xl border flex items-start gap-3 shadow-sm ${styles[status.level]}`;
+      banner.innerHTML = `<i class="fa-solid ${icons[status.level]} text-xl mt-0.5"></i><div><h3 class="font-bold text-sm">${escapeHtml(status.title)}</h3><p class="text-xs opacity-90 mt-0.5">${escapeHtml(status.msg)}</p></div>`;
+
+      const lastW = p.weights[p.weights.length - 1];
+      const avg7 = p.weights.length ? (p.weights.slice(-7).reduce((s, x) => s + x.grams, 0) / Math.min(7, p.weights.length)) : 0;
+      document.getElementById('lastWeightBadge').textContent = lastW ? `${lastW.grams} g` : '-- g';
+      document.getElementById('weightStatsSubtitle').textContent = p.weights.length ? `Media ultimi 7 log: ${avg7.toFixed(1)} g` : 'Media ultimi 7 log: -- g';
+      renderCleanWeightChart(p);
+
+      document.getElementById('quickTasksGrid').innerHTML = QUICK_TASKS.map(t => {
+        const lastDate = p.tasks[t.id] ? new Date(p.tasks[t.id]) : null;
+        const diffDays = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / 86400000) : null;
+        const isOverdue = diffDays === null || diffDays >= t.warnDays;
+        const timeText = diffDays === null ? 'Mai fatto' : (diffDays === 0 ? 'Fatto oggi' : `${diffDays}g fa`);
+        return `
+          <button onclick="triggerTask('${t.id}')" class="p-3 rounded-xl border text-left transition active:scale-95 flex items-center gap-3 ${isOverdue ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200 hover:bg-emerald-50'}">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center ${isOverdue ? 'bg-amber-200 text-amber-800' : 'bg-emerald-100 text-emerald-700'}"><i class="fa-solid ${t.icon}"></i></div>
+            <div class="overflow-hidden">
+              <div class="font-semibold text-xs text-slate-800 truncate">${t.label}</div>
+              <div class="text-[11px] ${isOverdue ? 'text-amber-700 font-bold' : 'text-slate-500'}">${isOverdue ? '⚠️ ' : ''}${timeText}</div>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      renderFlightSection(p);
+
+      document.getElementById('parrotInfoFooter').innerHTML = `
+        <div class="flex items-center gap-2">
+          ${renderAvatarHtml(p, 'w-7 h-7', 'text-xs')}
+          <div><strong class="text-slate-800">${escapeHtml(p.name)}</strong> • ${escapeHtml(p.species)} ${p.ring ? `• Anello: ${escapeHtml(p.ring)}` : ''}</div>
+        </div>
+        ${p.ownerName ? `<div class="text-[11px] text-slate-500">👤 ${escapeHtml(p.ownerName)}</div>` : ''}
+        ${p.ownerPhone ? `<div class="text-[11px] text-slate-500">📍 ${escapeHtml(p.ownerPhone)}</div>` : ''}
+        ${p.social ? `<div class="text-[11px] text-slate-500">📱 ${escapeHtml(p.social)}</div>` : ''}
+        ${p.vet ? `<div class="text-[11px] text-slate-500">🩺 Vet: ${escapeHtml(p.vet)}</div>` : '<div class="text-[11px] text-amber-600">⚠️ Aggiungi il contatto del Veterinario Aviario in "Modifica info"</div>'}
+      `;
+
+      renderDietStats(p);
+      renderChopSection();
+      const convVal = p.conversionPct ?? 70;
+      document.getElementById('conversionSlider').value = convVal;
+      document.getElementById('conversionPctLabel').textContent = `${convVal}% Sano / ${100 - convVal}% Semi`;
+      renderPantry();
+
+      document.getElementById('dietLogList').innerHTML = p.dietLogs.length ? p.dietLogs.slice(0, 15).map(d => {
+        const diff = Math.max(0, (d.offered || 0) - (d.eaten || 0)).toFixed(1);
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex justify-between items-center gap-2">
+            <div>
+              <div class="font-semibold text-slate-700">${escapeHtml(d.type)} <span class="text-xs font-normal text-slate-500">(dati ${d.offered}g • avanzo ${diff}g)</span></div>
+              <div class="text-xs text-slate-400">${new Date(d.ts).toLocaleDateString('it-IT')} ${d.notes ? `• ${escapeHtml(d.notes)}` : ''}</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 shrink-0">
+              ${d.eaten}g mangiati
+            </span>
+          </div>
+        `;
+      }).join('') : '<p class="text-slate-400 text-xs">Nessun pasto registrato.</p>';
+
+      renderBedtimeSection(p);
+      renderMedicationsSection(p);
+      renderInfectiousPanel(p);
+
+      document.getElementById('healthLogList').innerHTML = p.healthLogs.length ? p.healthLogs.slice(0, 15).map(h => `
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="flex justify-between text-xs text-slate-400">
+            <span>${new Date(h.ts).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</span>
+          </div>
+          <div class="font-semibold text-slate-700 text-xs">Feci: <span class="text-slate-900">${escapeHtml(h.droppings)}</span> • Urati: <span class="text-slate-900">${escapeHtml(h.urates)}</span></div>
+          ${h.notes ? `<div class="text-xs text-slate-600">— <em>"${escapeHtml(h.notes)}"</em></div>` : ''}
+        </div>
+      `).join('') : '<p class="text-slate-400 text-xs">Nessun controllo feci registrato.</p>';
+
+      populatePhotoSelectors(p);
+      renderTricksSection(p);
+      renderObjectPrefs(p);
+      renderFirstAidChecklist();
+      renderCageSetupSection(p);
+      renderAdminSection();
+    }
+
+    initPWAAndAutoSync();
+    renderAll();
+  </script>
+</body>
+</html>
